@@ -1,21 +1,9 @@
 
 <img src="assets/Imago-logo.png" alt="Imago Logo" width="300"/>
 
-# Imago Template Repository
+# Embedding embeddings across social research and policy (EMBED2Social)
 
-Welcome to the Imago template repository!  
-This repository provides a starting point for open, collaborative outputs that support the use of satellite imagery.
-
-## 🚀 How to Use This Template
-
-1. **Click "Use this template"** at the top of the repository page to create your own project based on this template.
-2. **Update project details** such as the title, description, and contact information in this README.
-3. **Review and adapt the [CONTRIBUTING.md](CONTRIBUTING.md)** file to match your project's contribution process.
-4. **Set up repository features**:
-   - Update issue and pull request templates in `.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md` as needed.
-   - Configure the [All Contributors Bot](https://allcontributors.org/) for contributor recognition.
-5. **Replace or add your own code, data, and documentation** in the appropriate folders.
-
+The aim of EMBED2Social is to accelerate and widen the adoption of image embedding technology in applied contexts to facilitate unlocking the potential of satellite data for research, policy and decision-making.
 
 ## 🛠️ Contributing
 
@@ -64,3 +52,9 @@ After your PR is merged, comment on an issue or PR:
 See the [emoji key](https://allcontributors.org/docs/en/emoji-key) for available contribution types.
 
 Thank you for helping us build open, collaborative, and impactful projects with Imago!
+
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
