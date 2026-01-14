@@ -1,3 +1,15 @@
+# all extra folders
+/data/
+/archive/
+/logs/
+/illustrations/
+
+# trash
+.Trash-*/
+
+.DS_Store
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
