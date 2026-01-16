@@ -29,12 +29,15 @@ x_\text{original} = \frac{x_\text{int16}}{32767}
 $$
 - The scaled int16 dataset preserves the original float64 values with very high precision. The mean error and RMSE are on the 6th decimal place, while the maximum absolute error occurs at the 5th decimal place (validated for SJ26 tile, 2024).
 
-**Snippet of scaling error statistics** <br>
+**Scaling error statistics snippet (IMAGO)** <br>
 <img src="accuracy_stats.png" width="300" height="150">
 
-AlphaEarth Foundations dataset by [Source Cooperative](https://source.coop/tge-labs/aef) organised in a different way. For example, it is stored in signed 8-bit data type with `-128` as a nodata value, with a spatial index with the filenames. This also allows to considerably reduce the filesize (3.45 GB for 8192 x 8192 pixels), but has a lower accuracy.
-
 ![scaled_accuracy](SJ26-2024_band1_difference_hist.png)
+
+Google Embedding dataset by [Source Cooperative](https://source.coop/tge-labs/aef) organised in a different way. It is stored in signed 8-bit data type through nonlinear scaling, with `-128` as a nodata value and the spatial index recorded within the filenames. This also allows to considerably reduce the filesize (3.45 GB for 8192 x 8192 pixels), but has a lower accuracy, especially regarding the maximum error.
+
+**Scaling error statistics snippet (Source Cooperative)** <br>
+<img src="accuracy_stats_sourcecoop.png" width="300" height="150">
 
 ### Tiling (AlphaEarth Foundations and Source Cooperative)
 AlphaEarth Foundation Embeddings in the Source Cooperative data product are internally tiled - the boundaries of tiles can be found [here](https://source.coop/tge-labs/aef/v1/annual/aef_index.gpkg) in `aef.index` file (incl. GeoPackage).
@@ -78,12 +81,19 @@ TQ06, TQ08, TQ28, TQ46, TQ48.
 
 ### Google Cloud useful links
 Projects: https://console.cloud.google.com/earth-engine/welcome?project=embed2social
+
 See your quota: https://docs.cloud.google.com/iam/docs/roles-permissions/servicemanagement#servicemanagement.quotaViewer
+
 Check quotas: https://console.cloud.google.com/iam-admin/quotas
+
 Additionally, check your pricing [here](https://cloud.google.com/earth-engine/pricing)!
+
 See the catalogue: https://developers.google.com/earth-engine/datasets/catalog
+
 Check all tasks: https://console.cloud.google.com/earth-engine/tasks?project=embed2social
+
 Your buckets (browser): https://console.cloud.google.com/storage/browser/embed2social-storage/
+
 See the traffic and latency: https://console.cloud.google.com/apis/dashboard?project=embed2social (if performance is lower than expected)
 
 Benchmarking: https://github.com/google/earthengine-community/blob/master/guides/linked/Earth_Engine_benchmarking_toolkit.ipynb
@@ -153,7 +163,7 @@ In the non-commercial version tasks are scheduled quickly, one by one, but it's 
 - ~~to check if additional reprojecting in building a cell involves more EECU (maybe a bit, but not so relevant)~~ - DONE
 - ~~to check if mosaicked datasets involve more EECU (no visible diffrences)~~ - DONE
 - ~~to find out the real boundaries of Google Embeddings~~ - DONE
-- to compare the accuracy of the Imago-scaled dataset and Source Cooperative (int)
+- ~~to analyse the accuracy of the Source Cooperative dataset~~ - DONE
 - ~~to compress the dataset size:~~
     - ~~converting  values to integer through a scale factor~~ - DONE
     - ~~output will be in int32 or int16 (preferably unsigned)~~ - DONE
