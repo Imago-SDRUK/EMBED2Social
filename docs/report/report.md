@@ -23,10 +23,10 @@ The provided export pipeline uses Google Earth Engine and Google Cloud Space sto
 - 10 m spatial resolution
 - Tiled by 20 x 20 km National Grid (2001 x 2001 px)
 - NoData is undefined with one extra pixel along the northern and eastern tile edges. At the same time, for further processing pixels equal to 0 should be filtered out as they distort the calculation.
-- Value magnitude i from -32767 to +32767 to reduce the output size in average by one third of the original size. To work with original decimal values (to descale) which range from -1 to +1, use the following formula: 
-$$
-x_\text{original} = \frac{x_\text{int16}}{32767}
-$$
+- Value magnitude ranges from -32767 to +32767 to reduce the output size in average by one third of the original size. To work with original decimal values (to 'descale') which range from -1 to +1, use the following formula:
+
+$x_\text{original} = \frac{x_\text{int16}}{32767}$
+
 - The scaled int16 dataset preserves the original float64 values with very high precision. The mean error and RMSE are on the 6th decimal place, while the maximum absolute error occurs at the 5th decimal place (validated for SJ26 tile, 2024).
 
 **Scaling error statistics snippet (IMAGO)** <br>
@@ -77,7 +77,7 @@ Even the same requests might be processed in a very different time (see [here](h
 
 The Greater London interesects 11 tiles of 20km x 20 km (according to [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
 
-TQ06, TQ08, TQ28, TQ46, TQ48.
+TQ06, TQ08, TQ26, TQ28, TQ46, TQ48.
 
 ### Google Cloud useful links
 Projects: https://console.cloud.google.com/earth-engine/welcome?project=embed2social
