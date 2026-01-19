@@ -65,17 +65,19 @@ Even the same requests might be processed in a very different time (see [here](h
 
 **Time performance and data size by year**
 
-| Year | Pipeline runtime (s) | Pipeline runtime (h) | EECU time (s) | EECU time (h) | Total size (Gb) |
-|:-----|---------------------:|---------------------:|--------------:|--------------:|---------------:|
-| 2024 | 27,420.62465         | 7.61684018           | 278,886.6827  | 77.46852297   |     |
-| 2023 |         |           |   |   |          |
-| 2022 |         |           |   |   |          |
-| 2021 |         |           |   |   |          |
-| 2020 |         |           |   |   |          |
+| Year    | Pipeline runtime (s) | Pipeline runtime (h) | EECU time (s)    | EECU time (h)  | Total size (Gb) |
+|:--------|:--------------------|:--------------------|:----------------|:---------------|:----------------|
+| 2024    | 27,420.6247         | 7.6168              | 278,886.6827    | 77.4685        |                 |
+| 2023    | 30,263.8161         | 8.4066              | 264,226.6384    | 73.3962        |                 |
+| 2022    | 25,515.9630         | 7.0877              | 257,439.4404    | 71.5109        |                 |
+| 2021    | 27,541.3252         | 7.6504              | 262,592.8037    | 72.9424        |                 |
+| 2020    | 24,354.6962         | 6.7652              | 275,837.1997    | 76.6214        |                 |
+| average | 27,019.2850         | 7.5054              | 267,796.5530    | 74.3879        |                 |
+
 
 ### London case study
 
-The Greater London interesects 11 tiles of 20km x 20 km (according to [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
+The Greater London interesects 11 tiles of 20km x 20 km (according to the used LSOA polygons and [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
 
 TQ06, TQ08, TQ26, TQ28, TQ46, TQ48.
 
