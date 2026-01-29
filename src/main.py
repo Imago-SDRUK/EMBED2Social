@@ -14,7 +14,7 @@
 import ee
 import json
 import geopandas
-from typing import Optional, List, Tuple
+from typing import Tuple
 import time
 from datetime import datetime, timezone
 
@@ -32,66 +32,80 @@ def auth_init(project: str ='embed2social', auth_mode: str ='localhost'):
     print("-" * 40)
 
 def build_cell_year(
-    cell: "gpd.GeoDataFrame",
+    cell: "geopandas.GeoDataFrame",
     year: int,
+    collection: str = 'GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL',
     verbose: bool = False
 ) -> Tuple[ee.Image, ee.Geometry, int]:
     """
     Build a GEE Image with embeddings from year `year` in a grid cell `cell`.
 
     Args:
+        collection: path to the GEE collection.
         cell: GeoPandas GeoDataFrame containing exactly one row representing a grid cell geometry.
         year: year for which embeddings are required
+        verbose: print detailed logs. WARNING: this might bloat up logs
+        when running batch export with many tasks.
+            Default is False
     Returns:
         image: ee.Image containing embeddings clipped to the cell geometry
-        geometry: ee.Geometry of the grid cell (WGS84)
+        ee_geometry: ee.Geometry of the grid cell (WGS84)
         count: Number of embedding tiles intersecting the cell for the given year.
     """
-    geometry = ee.Geometry(
-        json.loads(
-            cell.to_crs('EPSG:4326').geometry.to_json()
-        )['features'][0]['geometry']
-    )
+
+    # This handles transformation from geodataframe to GEE geometry
+    # without JSON indexing and intermediate FeatureCollection wrapping
+    # Initial geometries can have multipolygons/empty geometry/row filtering might break
+    geom = cell.to_crs(4326).geometry.iloc[0]
+    if geom is None or geom.is_empty:
+        raise ValueError("Empty geometry")
+    ee_geometry = ee.Geometry(geom.__geo_interface__)
+
     # load the satellite embedding collection
-    collection = ee.ImageCollection('GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL')
+    collection = ee.ImageCollection(collection)
     # filter by date and region
     start_date = f'{year}-01-01'
     end_date = f'{year+1}-01-01'
     # get all images that overlap the geometry
-    filtered = collection.filterDate(start_date, end_date).filterBounds(geometry)
-    count = filtered.size().getInfo()
-    if count == 0:
-        raise ValueError(f"No images found for year {year} in specified region")
+    filtered = collection.filterDate(start_date, end_date).filterBounds(ee_geometry)
 
-    # tile metadata
-    tiles_list = filtered.toList(count)
-    print(f"Found {count} tile(s) intersecting this region")
+    """count = filtered.size().getInfo() # TODO - do have`.getInfo() only with verbose mode and with lazy evaluation`
+    print(f"Count is {count}")"""
+
+    count_eenumber = filtered.size()
+    count=count_eenumber.getInfo() # now it's a Python int
+
     if verbose:
-        for i in range(count):
-            img = ee.Image(tiles_list.get(i))
-            info = img.getInfo()
-            print("-" * 40)
-            print(f"Tile {i+1}")
-            print(f"ID: {info['id']}")
-            first_band = info['bands'][0]
-            print(f"CRS: {first_band['crs']}")
-            print(f"Resolution : {first_band['crs_transform'][0]}")
+        #  tile metadata
+        tiles_list = filtered.toList(count)
+        print(f"Found {count} tile(s) intersecting this region")
+        if verbose:
+            for i in range(count):
+                img = ee.Image(tiles_list.get(i))
+                info = img.getInfo()
+                print("-" * 40)
+                print(f"Tile {i+1}")
+                print(f"ID: {info['id']}")
+                first_band = info['bands'][0]
+                print(f"CRS: {first_band['crs']}")
+                print(f"Resolution : {first_band['crs_transform'][0]}")
     
     # create mask for the geometry
-    roi_mask = ee.Image(1).clip(geometry)
+    roi_mask = ee.Image(1).clip(ee_geometry)
     # apply mask to all images
     masked = filtered.map(lambda img: img.updateMask(roi_mask))
     # handle single vs multiple tiles
     if count == 1:
-        print(f" Single tile covers this region")
+        verbose and print("Single tile covers this region")
         image = masked.first()
     else:
-        print(f" {count} tiles cover this region. Mosaicking...")
+        verbose and print(f" {count} tiles cover this region. Mosaicking...")
+        print("-" * 40)
         image = masked.mosaic()
     # clip to geometry
-    image = image.clip(geometry)
+    image = image.clip(ee_geometry)
     
-    return image, geometry, count
+    return image, ee_geometry, count
 
 def probe_image_properties(image: ee.Image, geometry: ee.Geometry = None):
     """
@@ -106,9 +120,6 @@ def probe_image_properties(image: ee.Image, geometry: ee.Geometry = None):
     print("=" * 60)
     print("IMAGE PROPERTIES")
     print("=" * 60)
-    
-    # Get all properties
-    props = image.getInfo()
     
     # Band information
     bands = image.bandNames().getInfo()
@@ -185,8 +196,9 @@ def export_cloud(
     cog: bool = False
 ) -> ee.batch.Task:
     """
-    Export to Google Cloud Storage as GeoTIFF 
-    (Cloud Optimised GeoTIFF as optional).
+    Builds and launches batch export tasks to Google Cloud Storage as GeoTIFF 
+    (Cloud Optimised GeoTIFF as optional). The client only initiates the task.
+    Once started, task runs entirely on GEE servers, even if the client disconnects.
     This is the RECOMMENDED method for most cases.
     
     Args:
@@ -236,9 +248,10 @@ def export_drive(
     cog: bool = False
 ) -> ee.batch.Task:
     """
-    Export to Google Drive as GeoTIFF 
-    (Cloud Optimised GeoTIFF as optional).
-    
+    Builds and launches batch export tasks to Google Drive as GeoTIFF 
+    (Cloud Optimised GeoTIFF as optional). The client only initiates the task.
+    Once started, task runs entirely on GEE servers, even if the client disconnects.
+
     Args:
         image (ee.Image): Earth Engine image
         geometry (ee.Geometry): Region to export
@@ -347,7 +360,6 @@ def wait_for_all_tasks(tasks, poll_interval=60):
     
     end_time = time.time()
     total_seconds = end_time - start_time
-    print(f"All tasks finished in {total_seconds:.1f} s")
     print("=" * 60)
 
     # capture full metadata
@@ -356,7 +368,7 @@ def wait_for_all_tasks(tasks, poll_interval=60):
         status = task.status()
         for key in ['creation_timestamp_ms', 'start_timestamp_ms', 'update_timestamp_ms']:
             if key in status:
-                status[key] = datetime.utcfromtimestamp(status[key]/1000).strftime('%Y-%m-%d %H:%M:%S')
+                status[key] = datetime.fromtimestamp(status[key]/1000).strftime('%Y-%m-%d %H:%M:%S')
         all_statuses.append(status)
     
     return total_seconds, all_statuses, task_ids
@@ -368,11 +380,11 @@ def get_operations_metadata(task_ids, verbose=False):
     all_metadata = []
     
     for task_id in task_ids:
-        operation = ee.data.getOperation(f'projects/earthengine-legacy/operations/{task_id}')
+        operation = ee.data.getOperation(f'projects/{project}/operations/{task_id}')
         # Convert timestamps to human-readable format
         for key in ['creation_timestamp_ms', 'start_timestamp_ms', 'update_timestamp_ms']:
             if key in operation:
-                operation[key] = datetime.utcfromtimestamp(operation[key]/1000).strftime('%Y-%m-%d %H:%M:%S')
+                operation[key] = datetime.fromtimestamp(operation[key]/1000).strftime('%Y-%m-%d %H:%M:%S')
         all_metadata.append(operation)
 
     if verbose:
@@ -382,67 +394,65 @@ def get_operations_metadata(task_ids, verbose=False):
 
 if __name__ == '__main__':
 
-    verbose=False
-    cog=False
-    tiles="data/uk_20km_grid.gpkg"
-    project="embed2social" # 'embed2social' or 'imago-479216' (non-commercial for testing)
-    storage="cloud"
+    collection='GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL'
+    tiles="data/uk_1km_grid_sample.gpkg"
+    project="imago-479216" # 'embed2social' or 'imago-479216' (non-commercial for testing)
+    storage="drive"
     folder="embed2social-storage"
-    years = list(range(2021, 2022)) # range includes start, but excludes stop
+    year = 2021
+    verbose=True
+    cog=False
 
     results = []
     overall_start = time.time()
 
     tasks = []
 
-    _ = auth_init(project=project, auth_mode='notebook') # localhost' if running local .py (doesn't work in Docker)
+    _ = auth_init(project=project, auth_mode='notebook') # localhost' if running local .py (doesn't work in Docker) 
+    # TODO - we need to move from notebook to Docker + headless (needs service account auth)
     grid = geopandas.read_file(tiles)
 
     for _, row in grid.iterrows():
         cell = row["tile_name"]
         cell_gdf = grid.loc[[row.name]]
         
-        for year in years:
-            cell_gee_image, cell_geometry, count = build_cell_year(cell_gdf, year, verbose=False)
+        cell_gee_image, cell_geometry, count = build_cell_year(cell_gdf, year, collection=collection, verbose=verbose)
             
-            # scaling image (int16)
-            cell_gee_image = (
-                cell_gee_image
-                .clamp(-1.0, 1.0)
-                .multiply(32767)
-                .round()
-                .toInt16()
+        # scaling image (int16)
+        cell_gee_image = (
+            cell_gee_image
+            .clamp(-1.0, 1.0)
+            .multiply(32767)
+            .round()
+            .toInt16()
+        ) # TODO - this silently clips info if original data is changed?
+            
+        if storage=="cloud":
+            task = export_cloud(
+                image=cell_gee_image,
+                geometry=cell_geometry,
+                description=f"{cell}-{year}",
+                prefix=f"{year}/{cell}-{year}",
+                folder=folder,
+                crs="EPSG:27700",
+                cog=False
             )
-            
-            if storage=="cloud":
-                task = export_cloud(
-                    image=cell_gee_image,
-                    geometry=cell_geometry,
-                    description=f"{cell}-{year}",
-                    prefix=f"{year}/{cell}-{year}",
-                    folder=folder,
-                    crs="EPSG:27700",
-                    cog=False
-                )
 
-            if storage=="drive":
-                task = export_drive(
-                    image=cell_gee_image,
-                    geometry=cell_geometry,
-                    description=f"{cell}-{year}",
-                    prefix=f"{year}/{cell}-{year}",
-                    folder=folder,
-                    crs="EPSG:27700",
-                    cog=False
-                )
+        if storage=="drive":
+            task = export_drive(
+                image=cell_gee_image,
+                geometry=cell_geometry,
+                description=f"{cell}-{year}",
+                prefix=f"{year}/{cell}-{year}",
+                folder=folder,
+                crs="EPSG:27700",
+                cog=False
+            )
 
-            if verbose:
-                probe_image_properties(cell_gee_image)
+        if verbose:
+            probe_image_properties(cell_gee_image)
 
-            tasks.append(task)
-
-            task_metadata = task.status()
-            #print(json.dumps(task_metadata, indent=4))
+        tasks.append(task)
 
     # wait for all tasks to complete   
     total_seconds, all_statuses, task_ids = wait_for_all_tasks(tasks, poll_interval=30)

@@ -8,14 +8,16 @@ For further details on the Embedding dataset, see [this blogpost](https://medium
 The provided export pipeline uses Google Earth Engine and Google Cloud Space storage configured with the profeessional paid proejct. The initial test were conducted using the non-commercial Google Earth Engine account with Google Drive.
 
 ### Data specification
-**Input data:**
+Throughout the IMAGO workflow, data changes form twice, resulting in three data stages:
+**1. Input data:**
+- GeoTIFF format, optionally with COG layout (cannot be parameterised)
 - 64 bands (from A00 to A63)
-- COG layout (optional)
 - LZW compression (regardless whether COG or not)
 - NoData is undefined by default (can be defined)
 - usually one extra pixel along northern and eastern tile edges (so if expected 2000 x 2000 pixels, the output will contain 2001 x 2001 pixels)
 
-**Output data:**
+**2. Intermediate data:**
+- GeOTIFF format
 - 64 bands (from A00 to A63)
 - Int16 data type
 - GeoTIFF format without COG
@@ -39,6 +41,14 @@ Google Embedding dataset by [Source Cooperative](https://source.coop/tge-labs/ae
 **Scaling error statistics snippet (Source Cooperative)** <br>
 <img src="accuracy_stats_sourcecoop.png" width="300" height="150">
 
+3. **Output data:**
+- GeoPackage format
+- Built on the [LSOA features](https://data.imago.ac.uk/datasets/lsoa-boundaries-for-the-united-kingdom-2021)
+- Includes additional 64 columns, which represent mean Embedding values for each dimension
+- Magnitude of embedding value ranges from -1 to +1 (accordingly to input data)
+- Embedding columns have floating-point (double-precision) data types
+
+
 ### Tiling (AlphaEarth Foundations and Source Cooperative)
 AlphaEarth Foundation Embeddings in the Source Cooperative data product are internally tiled - the boundaries of tiles can be found [here](https://source.coop/tge-labs/aef/v1/annual/aef_index.gpkg) in `aef.index` file (incl. GeoPackage).
 
@@ -61,18 +71,22 @@ Includes queue wait time, server execution time, writing I/O (doesn't include ti
 
 Python runtime is a sum of task runtimes, client-side preparation, initialization and scheduling time before tasks start to run on Earth Engine.
 
-Even the same requests might be processed in a very different time (see [here](https://developers.google.com/earth-engine/guides/computation_overview#stability_and_predictability)). It has been found that EECU time for the same area of interest can vary by a factor of 2.8, while total runtime can vary by up to a factor of 8.8.
+Even the same requests might be processed in a very different time (see [here](https://developers.google.com/earth-engine/guides/computation_overview#stability_and_predictability)). It has been found that EECU time for the same area of interest can vary by a factor of 2.8, while total runtime can vary by up to a factor of 8.8. However, the pipeline runtime and billable EECU time can be roughly predicted for large extracts (see below).
 
 **Time performance and data size by year**
 
 | Year    | Pipeline runtime (s) | Pipeline runtime (h) | EECU time (s)    | EECU time (h)  | Total size (Gb) |
 |:--------|:--------------------|:--------------------|:----------------|:---------------|:----------------|
-| 2024    | 27,420.6247         | 7.6168              | 278,886.6827    | 77.4685        |                 |
-| 2023    | 30,263.8161         | 8.4066              | 264,226.6384    | 73.3962        |                 |
-| 2022    | 25,515.9630         | 7.0877              | 257,439.4404    | 71.5109        |                 |
-| 2021    | 27,541.3252         | 7.6504              | 262,592.8037    | 72.9424        |                 |
-| 2020    | 24,354.6962         | 6.7652              | 275,837.1997    | 76.6214        |                 |
-| average | 27,019.2850         | 7.5054              | 267,796.5530    | 74.3879        |                 |
+| 2024    | 27,420.6247         | 7.6168              | 278,886.6827    | 77.4685        |   258.24              |
+| 2023    | 30,263.8161         | 8.4066              | 264,226.6384    | 73.3962        |   258.64              |
+| 2022    | 25,515.9630         | 7.0877              | 257,439.4404    | 71.5109        |   258.64              |
+| 2021    | 27,541.3252         | 7.6504              | 262,592.8037    | 72.9424        |   258.48              |
+| 2020    | 24,354.6962         | 6.7652              | 275,837.1997    | 76.6214        |   258.76              |
+| 2019    | 41,363.0000         | 11.489              | 302,880.4143    | 84.1334        |   258.11              |
+| 2018    |                     |                     |                 |                |                 |
+| 2017    |                     |                     |                 |                |                 |
+| **AVERAGE** | 27,019.2850         | 7.5054              | 267,796.5530    | 74.3879        |                 |
+| **TOTAL**   |                     |                     |                 |                |                 |
 
 
 ### London case study
@@ -98,16 +112,22 @@ Your buckets (browser): https://console.cloud.google.com/storage/browser/embed2s
 
 See the traffic and latency: https://console.cloud.google.com/apis/dashboard?project=embed2social (if performance is lower than expected)
 
+Google Cloud SDK to manage Google Cloud Storage: https://docs.cloud.google.com/sdk/gcloud
+
+Or you can use a legacy CLI tool to manage Google Cloud storage - `gsutil`: https://docs.cloud.google.com/storage/docs/gsutil
+
 Benchmarking: https://github.com/google/earthengine-community/blob/master/guides/linked/Earth_Engine_benchmarking_toolkit.ipynb
 
 ### GEE code features
 Code consists of:
--client (Python objects)
--server (`ee`. handler)
--proxy objects - containerised Python objects transformed into `ee.computedObject`
+- client (Python objects)
+- server (`ee`. handler)
+- proxy objects - containerised Python objects transformed into `ee.computedObject`
 
-FeatureCollection -> Feature (watershed)
-ImageCollection -> Image (satellite)
+The main geospatial data objects in GEE are:
+- FeatureCollection -> Feature (watershed)
+- ImageCollection -> Image (satellite)
+- Geometry (Point/LineString/Polygon/Rectangle/MultiPoint/MultiLineString/MultiPolygon/LinearRing/BBox)
 
 Processing environments:
 - `interactive`
@@ -130,14 +150,13 @@ Export tasks are classified as batch processing (for example, [cloud export](htt
 - `shardSize` doesn't change metadata, but might contribute to higher EECU usage (for 101*101 pixel image shardsize=55 increases EECU time roughly by factor of 2).  It's a sort of internal tiling, which can be used to reduce memory per worker and avoid errors (safer not means faster). Introduces overhead for small exports though.
 
 **Notes:**
-- the number of concurrently running tasks vary depending on the project configuration. For the non-commercial project, it's up to three-four, for the professional paid project - 20.
+- the number of concurrently running tasks vary depending on the project configuration. For the non-commercial project, it's up to three-four, for the professional paid project - 20. <br>
+Maximum number of concurrently running tasks is not guaaranteed (eg, for non-commercial projects one-task cap has been experienced)
 - we can't exactly predict computation performance, it's volatile and depends on caching/EE algorithm changes/libraries changes, aside from different underlying data
 - number of workers is determined by EE service configuration/ability to parallelise the job, **NOT CONFIGURABLE**.
 - in a research mode, tasks are scheduled independently for each individual, but visible across the project. In a paid mode, tasks are organised in a project-wide queue
 - it is not possible to set task priorities for users with non-commercial access
 - it's impossible to run GEE completely lasily, without hitting real data, to check the performance/tasks/operations/memory/computation graph. Possible to use `explain` on collections/images to inspect the computation graph.
-
-
 
 ### GEE processing structure
 - One task = one operation
@@ -166,6 +185,9 @@ In the non-commercial version tasks are scheduled quickly, one by one, but it's 
 - ~~to check if mosaicked datasets involve more EECU (no visible diffrences)~~ - DONE
 - ~~to find out the real boundaries of Google Embeddings~~ - DONE
 - ~~to analyse the accuracy of the Source Cooperative dataset~~ - DONE
+- to provide performance/size stats per year of data product (2017-2019)
+- to provide a command line tool for one-year uploads
+- to develop code for LSOA extraction with IMAGO pipeline
 - ~~to compress the dataset size:~~
     - ~~converting  values to integer through a scale factor~~ - DONE
     - ~~output will be in int32 or int16 (preferably unsigned)~~ - DONE
