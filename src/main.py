@@ -1,15 +1,57 @@
-# Imago Project
+"""
+Imago Project - Batch export of Google Earth Engine collections
+for the area and year of interest
+(such as Google Satellite Embeddings)
+
 # Maintainers:
 # Vitaly Kryukov <Vitaly.Kryukov@newcastle.ac.uk>
 # Daniel Arribas-Bel <darribas@liverpool.ac.uk>
 
-# This extracts annual AlpaEarth Foundation Embeddings 
-# as a batch from the area and year of interest
+Usage:
+    python src/main.py [OPTIONS]
 
-# TO RUN:
-# python main.py
-# `nohup python main.py > logs/output_2021.log 2>&1 &` (to ignore disconnections, sleep, locks etc)
-# pip install earthengine-api
+OPTIONS
+    --collection TEXT        Earth Engine image collection to extract 
+                             (default: GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL). 
+                             Available public collections can be found in the Earth Engine Data Catalog.
+
+    --project TEXT           Google Earth Engine project ID (default: imago)
+
+    --auth-mode TEXT         Earth Engine authentication mode (default: gcloud)
+
+    --tiles PATH             Path to the gridded (tiled) area of interest. 
+                             GeoPackage recommended, but other formats such as GeoJSON are supported.
+
+    --storage [drive|cloud]  Export destination (default: drive)
+
+    --folder TEXT            Drive folder or Cloud Storage bucket (default: embed2social-storage)
+
+    --year INTEGER           Year to extract embeddings for (default: 2024)
+
+    --verbose                Enable verbose logging (WARNING: can produce very large logs)
+
+    --cog                    Export as Cloud Optimized GeoTIFF (COG)
+
+    --scale                  Multiply output data by 32767 and round to store as Int16.
+                             This is used for Google Satellite Embeddings. 
+                             Include this flag if scaling is needed; omit to keep float values.
+
+    --poll-interval INTEGER  Polling interval for task monitoring, in seconds (default: 30)
+
+USAGE EXAMPLES
+    # Run with default settings
+    python src/main.py
+
+    # Example of export in non-commercial project (for testing)
+    python src/main.py --year 2024 --project imago --scale --storage drive --folder cli-test --tiles data/uk_1km_grid_sample1.gpkg
+
+    # Test with ESA world cover ("ESA/WorldCover/v100" collection)
+    python src/main.py --year 2020 --collection ESA/WorldCover/v100 --project imago --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
+
+    # Help
+    python src/main.py --help
+    
+"""
 
 import ee
 import json
@@ -18,16 +60,18 @@ from typing import Tuple
 import time
 from datetime import datetime, timezone
 
-def auth_init(project: str ='embed2social', auth_mode: str ='localhost'):
+import click # command line
+
+def auth_init(project: str ='imago', auth_mode: str ='gcloud'):
     """Start session on GEE"""
     try:
         ee.Initialize(project=project)
         print("Project initialised without credentials")
     except ee.EEException:
         print("No valid credentials, authenticating...")
-        ee.Authenticate(auth_mode=auth_mode)
-        ee.Initialize(project=project)
-        print("Authenticated and initialized")
+    ee.Authenticate(auth_mode=auth_mode)
+    ee.Initialize(project=project)
+    print("Authenticated and initialized")
     print(ee.String('Hello from the Earth Engine servers!').getInfo())
     print("-" * 40)
 
@@ -68,9 +112,6 @@ def build_cell_year(
     end_date = f'{year+1}-01-01'
     # get all images that overlap the geometry
     filtered = collection.filterDate(start_date, end_date).filterBounds(ee_geometry)
-
-    """count = filtered.size().getInfo() # TODO - do have`.getInfo() only with verbose mode and with lazy evaluation`
-    print(f"Count is {count}")"""
 
     count_eenumber = filtered.size()
     count=count_eenumber.getInfo() # now it's a Python int
@@ -333,7 +374,7 @@ def wait_for_task(
 def wait_for_all_tasks(tasks, poll_interval=60):
     """
     Wait until all Earth Engine tasks complete and record total runtime.
-    
+
     Args:
         tasks: list of ee.batch.Task objects
         poll_interval: seconds to wait between status checks
@@ -373,7 +414,7 @@ def wait_for_all_tasks(tasks, poll_interval=60):
     
     return total_seconds, all_statuses, task_ids
 
-def get_operations_metadata(task_ids, verbose=False):
+def get_operations_metadata(task_ids, project, verbose=False):
     """
     Given a list of task IDs, fetch and print operation metadata for each.
     """
@@ -392,61 +433,140 @@ def get_operations_metadata(task_ids, verbose=False):
         print(json.dumps(all_metadata, indent=4))
     return all_metadata
 
-if __name__ == '__main__':
+@click.command(context_settings=dict(show_default=True))
+@click.option(
+    "--collection",
+    default="GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL",
+    help="Earth Engine image collection to extract"
+)
+@click.option(
+    "-p", "--project",
+    default="imago",
+    help="Google Earth Engine project ID"
+)
+@click.option(
+    "--auth-mode",
+    default="gcloud",
+    help="Earth Engine authentication mode"
+)
+@click.option(
+    "--tiles",
+    default="data/uk_1km_grid_sample1.gpkg",
+    type=click.Path(exists=True),
+    help="Path to the gridded area of interest (tiles) to download the Embeddings"
+)
+@click.option(
+    "--storage",
+    type=click.Choice(["drive", "cloud"], case_sensitive=False),
+    default="drive",
+    help="Export destination - either Google Drive or Google Cloud Storage"
+)
+@click.option(
+    "--folder",
+    default="embed2social-storage",
+    help="Drive folder or Cloud Storage bucket"
+)
+@click.option(
+    "-y", "--year",
+    default=2024,
+    type=int,
+    help="Year to extract embeddings for"
+)
+@click.option(
+    "--verbose",
+    is_flag=False,
+    help="Enable verbose logging (WARNING: can produce very large logs)"
+)
+@click.option(
+    "--cog",
+    is_flag=False,
+    help="Export as Cloud Optimized GeoTIFF (COG)"
+)
+@click.option(
+    "--scale",
+    is_flag=True,
+    help="Scale to Int16, multiplying by 32767"
+)
+@click.option(
+    "--poll-interval",
+    default=30,
+    type=int,
+    help="Polling interval (seconds) for task monitoring"
+)
 
-    collection='GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL'
-    tiles="data/uk_1km_grid_sample.gpkg"
-    project="imago-479216" # 'embed2social' or 'imago-479216' (non-commercial for testing)
-    storage="drive"
-    folder="embed2social-storage"
-    year = 2021
-    verbose=True
-    cog=False
-
-    results = []
-    overall_start = time.time()
+def main(
+    collection,
+    tiles,
+    project,
+    storage,
+    folder,
+    year,
+    verbose,
+    cog,
+    scale,
+    auth_mode,
+    poll_interval,
+):
+    """
+    Batch export annual satellite imagery 
+    for a grid of spatial tiles and area of 
+    interest using Google Earth Engine 
+    (for example Google Satellite Embeddings).
+    """
 
     tasks = []
 
-    _ = auth_init(project=project, auth_mode='notebook') # localhost' if running local .py (doesn't work in Docker) 
-    # TODO - we need to move from notebook to Docker + headless (needs service account auth)
+    # Authenticate
+    auth_init(project=project, auth_mode=auth_mode)
+
+    # Load grid
     grid = geopandas.read_file(tiles)
 
     for _, row in grid.iterrows():
         cell = row["tile_name"]
         cell_gdf = grid.loc[[row.name]]
-        
-        cell_gee_image, cell_geometry, count = build_cell_year(cell_gdf, year, collection=collection, verbose=verbose)
-            
-        # scaling image (int16)
-        cell_gee_image = (
-            cell_gee_image
-            .clamp(-1.0, 1.0)
-            .multiply(32767)
-            .round()
-            .toInt16()
-        ) # TODO - this silently clips info if original data is changed?
-            
-        if storage=="cloud":
+
+        cell_gee_image, cell_geometry, count = build_cell_year(
+            cell_gdf,
+            year,
+            collection=collection,
+            verbose=verbose,
+        )
+
+        # Scale embeddings to int16
+        if scale:
+            print("Scaling image: multiply by 32767 and round (scale to Int16)")
+            cell_gee_image = (
+                cell_gee_image
+                .clamp(-1.0, 1.0)
+                .multiply(32767)
+                .round()
+                .toInt16()
+            )
+
+        description = f"{cell}-{year}"
+        prefix = f"{year}/{cell}-{year}"
+
+        if storage == "cloud":
             task = export_cloud(
                 image=cell_gee_image,
                 geometry=cell_geometry,
-                description=f"{cell}-{year}",
-                prefix=f"{year}/{cell}-{year}",
+                description=description,
+                prefix=prefix,
                 folder=folder,
                 crs="EPSG:27700",
-                cog=False
+                cog=cog,
             )
 
-        if storage=="drive":
+        else:  # drive
             task = export_drive(
                 image=cell_gee_image,
                 geometry=cell_geometry,
-                description=f"{cell}-{year}",
-                prefix=f"{year}/{cell}-{year}",
+                description=description,
+                prefix=prefix,
                 folder=folder,
                 crs="EPSG:27700",
-                cog=False
+                cog=cog,
             )
 
         if verbose:
@@ -454,33 +574,30 @@ if __name__ == '__main__':
 
         tasks.append(task)
 
-    # wait for all tasks to complete   
-    total_seconds, all_statuses, task_ids = wait_for_all_tasks(tasks, poll_interval=30)
-    total_hours=total_seconds/3600
+    # Wait for all tasks
+    total_seconds, all_statuses, task_ids = wait_for_all_tasks(
+        tasks,
+        poll_interval=poll_interval,
+    )
+
+    total_hours = total_seconds / 3600
     print("=" * 60)
-    print(f"Pipeline runtime: {total_seconds:.4f} seconds")
-    print(f"  ↳ {total_hours:.4f} hours")
+    print(f"Pipeline runtime: {total_seconds:.2f} seconds")
+    print(f"  ↳ {total_hours:.2f} hours")
 
-# fetch operation metadata and find total EECU time
-all_ops_metadata = get_operations_metadata(task_ids, verbose=False)
-total_eecu = 0.0
+    # Fetch operation metadata and compute total EECU
+    all_ops_metadata = get_operations_metadata(task_ids, project=project, verbose=verbose)
+    total_eecu = 0.0
 
-for op in all_ops_metadata:
-    create_time = op.get('metadata', {}).get('createTime', 0)
-    start_time = op.get('metadata', {}).get('startTime', 0)
-    create_dt = datetime.fromisoformat(
-        create_time.replace("Z", "+00:00")
-    ).astimezone(timezone.utc)
-    start_dt = datetime.fromisoformat(
-        start_time.replace("Z", "+00:00")
-    ).astimezone(timezone.utc)
-    
-    #print(f"Queue operation time: {(start_dt - create_dt).total_seconds()}")
-    
-    eecu = op.get('metadata', {}).get('batchEecuUsageSeconds', 0)
-    total_eecu += eecu
+    for op in all_ops_metadata:
+        eecu = op.get("metadata", {}).get("batchEecuUsageSeconds", 0)
+        total_eecu += eecu
 
-total_eecu_hours=total_eecu/3600
-print(f"Total billable EECU time across all tasks: {total_eecu:.4f} seconds")
-print(f"  ↳ {total_eecu_hours:.4f} hours")
-print("=" * 40)
+    print("=" * 40)
+    print(f"Total billable EECU time: {total_eecu:.2f} seconds")
+    print(f"  ↳ {total_eecu / 3600:.2f} hours")
+    print("=" * 40)
+
+
+if __name__ == "__main__":
+    main()

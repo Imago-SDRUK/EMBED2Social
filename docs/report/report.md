@@ -48,7 +48,6 @@ Google Embedding dataset by [Source Cooperative](https://source.coop/tge-labs/ae
 - Magnitude of embedding value ranges from -1 to +1 (accordingly to input data)
 - Embedding columns have floating-point (double-precision) data types
 
-
 ### Tiling (AlphaEarth Foundations and Source Cooperative)
 AlphaEarth Foundation Embeddings in the Source Cooperative data product are internally tiled - the boundaries of tiles can be found [here](https://source.coop/tge-labs/aef/v1/annual/aef_index.gpkg) in `aef.index` file (incl. GeoPackage).
 
@@ -83,11 +82,18 @@ Even the same requests might be processed in a very different time (see [here](h
 | 2021    | 27,541.3252         | 7.6504              | 262,592.8037    | 72.9424        |   258.48              |
 | 2020    | 24,354.6962         | 6.7652              | 275,837.1997    | 76.6214        |   258.76              |
 | 2019    | 41,363.0000         | 11.489              | 302,880.4143    | 84.1334        |   258.11              |
-| 2018    |                     |                     |                 |                |                 |
+| 2018    | 32,771.5112         | 9.1032              | 262,321.2517    | 72.867         |   258.44              |
 | 2017    |                     |                     |                 |                |                 |
 | **AVERAGE** | 27,019.2850         | 7.5054              | 267,796.5530    | 74.3879        |                 |
 | **TOTAL**   |                     |                     |                 |                |                 |
 
+
+### GEE export command-line tool
+
+A command line tool to export the tiled datasets has been developed:
+...
+
+Positional arguments are not used, as input names are usually long and non-obvious without a name. Therefore, the CLI tool uses only options.
 
 ### London case study
 

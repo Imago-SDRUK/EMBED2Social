@@ -4,6 +4,9 @@
 /logs/
 /illustrations/
 
+# ! IGNORE KEY FOR SERVICE ACCOUNT
+src/config.yaml
+
 # trash
 .Trash-*/
 
@@ -17,8 +20,6 @@ __pycache__/
 
 # C extensions
 *.so
-
-
 
 # Distribution / packaging
 .Python

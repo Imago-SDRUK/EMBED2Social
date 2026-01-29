@@ -33,8 +33,8 @@ See the [LICENSE](LICENSE) file for full details.
 
 ## 🗂️ Repository Structure
 
-- `src/` - Main codebase, eg to extract and export Embedding data
-- `demo/` -  Embed2Social prototype in development
+- `src/` - Main codebase, eg to extract and export Embedding data (**latest version)
+- `demo/` -  Embed2Social prototypes (notebooks and previous code versions)
 - `assets/` — Images, diagrams, and other media files
 - `.github/` — Community health files (issue/PR templates, workflows)
 - `CONTRIBUTING.md` — How to contribute to this project
