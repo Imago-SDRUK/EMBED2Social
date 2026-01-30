@@ -72,7 +72,7 @@ Python runtime is a sum of task runtimes, client-side preparation, initializatio
 
 Even the same requests might be processed in a very different time (see [here](https://developers.google.com/earth-engine/guides/computation_overview#stability_and_predictability)). It has been found that EECU time for the same area of interest can vary by a factor of 2.8, while total runtime can vary by up to a factor of 8.8. However, the pipeline runtime and billable EECU time can be roughly predicted for large extracts (see below).
 
-**Time performance and data size by year**
+**Pipeline runtime and data volume**
 
 | Year    | Pipeline runtime (s) | Pipeline runtime (h) | EECU time (s)    | EECU time (h)  | Total size (Gb) |
 |:--------|:--------------------|:--------------------|:----------------|:---------------|:----------------|
@@ -83,9 +83,10 @@ Even the same requests might be processed in a very different time (see [here](h
 | 2020    | 24,354.6962         | 6.7652              | 275,837.1997    | 76.6214        |   258.76              |
 | 2019    | 41,363.0000         | 11.489              | 302,880.4143    | 84.1334        |   258.11              |
 | 2018    | 32,771.5112         | 9.1032              | 262,321.2517    | 72.867         |   258.44              |
-| 2017    |                     |                     |                 |                |                 |
-| **AVERAGE** | 27,019.2850         | 7.5054              | 267,796.5530    | 74.3879        |                 |
-| **TOTAL**   |                     |                     |                 |                |                 |
+| 2017    | 42,716.2087         | 11.8656             | 287,451.6494    | 79.8477        |   260.33              |
+|         |                     |                     |                 |                |     
+| **AVERAGE** | 31,493.3931     | 8.7482              | 273,954.51      | 76.0985        |   258.705             |
+| **TOTAL**   | 251,947.145     | **69.9853**             | 2,191 636.08    | **608.7877**       |   **2.02 TiB**              |
 
 
 ### GEE export command-line tool
@@ -93,7 +94,7 @@ Even the same requests might be processed in a very different time (see [here](h
 A command line tool to export the tiled datasets has been developed:
 ...
 
-Positional arguments are not used, as input names are usually long and non-obvious without a name. Therefore, the CLI tool uses only options.
+Positional arguments are not used, as input names are usually long and non-obvious without a name. Therefore, the CLI tool uses `option` only.
 
 ### London case study
 
@@ -191,9 +192,10 @@ In the non-commercial version tasks are scheduled quickly, one by one, but it's 
 - ~~to check if mosaicked datasets involve more EECU (no visible diffrences)~~ - DONE
 - ~~to find out the real boundaries of Google Embeddings~~ - DONE
 - ~~to analyse the accuracy of the Source Cooperative dataset~~ - DONE
-- to provide performance/size stats per year of data product (2017-2019)
-- to provide a command line tool for one-year uploads
-- to develop code for LSOA extraction with IMAGO pipeline
+- ~~to provide performance/size stats per year of data product (2017-2019)~~ - DONE
+- ~~to provide a command line tool for one-year uploads~~
+- to develop code for LSOA extraction with IMAGO pipeline 
+- to align logfile names with the common conventions (https://stackoverflow.com/questions/1765689/what-is-the-best-practice-for-formatting-logs)
 - ~~to compress the dataset size:~~
     - ~~converting  values to integer through a scale factor~~ - DONE
     - ~~output will be in int32 or int16 (preferably unsigned)~~ - DONE

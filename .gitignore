@@ -4,14 +4,13 @@
 /logs/
 /illustrations/
 
-# ! IGNORE KEY FOR SERVICE ACCOUNT
-src/config.yaml
+# ignore tests
+/tests/
 
 # trash
 .Trash-*/
 
 .DS_Store
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
