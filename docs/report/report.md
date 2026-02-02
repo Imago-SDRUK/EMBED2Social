@@ -53,8 +53,6 @@ AlphaEarth Foundation Embeddings in the Source Cooperative data product are inte
 
 However, when running export directly through GEE in a verbose mode, it turned out that the original Embedding tiling is different from the published tile boundaries (eg, area of interest which intersects four Embedding tile, filters only two images while the outpus consistent and covers the whole area of interest). 
 
-**TODO** - to insert visualisation of different tile systems
-
 Therefore, the UK is covered by 39 Embedding tiles in the original dataset, which generally follow the outlines of UTM zones.
 
 ### Time concepts
@@ -180,25 +178,34 @@ In the non-commercial version tasks are scheduled quickly, one by one, but it's 
 - use `ee.Thing` as a server object and `ee.Thing.method()` as a server function
 - create Python base, then wrap it with GEE
 
-#### TODOs 
-- ~~avoid pasting tokens each time for a new EE request~~ - DONE
-- ~~to read time of GEE concurrent tasks once all tasks completed~~ - DONE
-- ~~to find out if LZW applied automatically~~ - DONE
-- ~~find out the approximate EECU consumption per one 20km x 20km tile per one year~~ - DONE
-- ~~in Drive, to create a folder before exporting datasets~~ - NOT NEEDED ANYMORE
-- ~~in Google Drive, handle overwriting files~~ - NOT NEEDED ANYMORE
-- ~~to test splitting one big tile (20km) into multiple chunks and feed them as separate tasks into GEE (currently each tile is one task)~~ - NOT NEEDED ANYMORE
-- ~~to check if additional reprojecting in building a cell involves more EECU (maybe a bit, but not so relevant)~~ - DONE
-- ~~to check if mosaicked datasets involve more EECU (no visible diffrences)~~ - DONE
-- ~~to find out the real boundaries of Google Embeddings~~ - DONE
-- ~~to analyse the accuracy of the Source Cooperative dataset~~ - DONE
-- ~~to provide performance/size stats per year of data product (2017-2019)~~ - DONE
-- ~~to provide a command line tool for one-year uploads~~
-- to develop code for LSOA extraction with IMAGO pipeline 
-- to align logfile names with the common conventions (https://stackoverflow.com/questions/1765689/what-is-the-best-practice-for-formatting-logs)
-- ~~to compress the dataset size:~~
-    - ~~converting  values to integer through a scale factor~~ - DONE
-    - ~~output will be in int32 or int16 (preferably unsigned)~~ - DONE
-    - ~~to decide whether COG is required and what is the best combination for compression/format/COG~~ - DONE
+## TODOs
+
+- [x] Avoid pasting tokens each time for a new EE request
+- [x] Read time of GEE concurrent tasks once all tasks completed
+- [x] Find out if LZW applied automatically
+- [x] Find out the approximate EECU consumption per one 20km x 20km tile per one year
+- [x] In Drive, create a folder before exporting datasets  
+  _Not needed anymore_
+- [x] In Google Drive, handle overwriting files  
+  _Not needed anymore_
+- [x] Test splitting one big tile (20km) into multiple chunks and feed them as separate tasks into GEE (currently each tile is one task)  
+  _Not needed anymore_
+- [x] Check if additional reprojecting in building a cell involves more EECU (maybe a bit, but not so relevant)
+- [x] Check if mosaicked datasets involve more EECU (no visible differences)
+- [x] Compress the dataset size:
+  - [x] Convert values to integer through a scale factor
+  - [x] Output will be in int32 or int16 (preferably unsigned)
+  - [x] Decide whether COG is required and what is the best combination for compression/format/COG
+- [x] Find out the real boundaries of Google Embeddings
+- [x] Analyse the accuracy of the Source Cooperative dataset
+- [x] Develop Colab Notebook to aggregate Embeddings at LSOA level
+  _Needs to be transformed as Colab CPUs are not suitable for massive I/O extractions_ 
+- [x] Provide performance/size stats per year of data product (2017–2024)
+- [x] Provide a command line tool for one-year uploads
+- [ ] Develop `.py` code for LSOA extraction with IMAGO pipeline
+- [ ] Align logfile names with the common conventions  
+  https://stackoverflow.com/questions/1765689/what-is-the-best-practice-for-formatting-logs  
+  _Partly done_
+
 
 

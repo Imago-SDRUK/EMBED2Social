@@ -4,8 +4,9 @@
 /logs/
 /illustrations/
 
-# ignore tests
-/tests/
+# ignore 2nd part and bash so far
+src/main.sh
+src/extract_to_lsoa.py
 
 # trash
 .Trash-*/

@@ -5,7 +5,6 @@ for the area and year of interest
 
 # Maintainers:
 # Vitaly Kryukov <Vitaly.Kryukov@newcastle.ac.uk>
-# Daniel Arribas-Bel <darribas@liverpool.ac.uk>
 
 Usage:
     python src/main.py [OPTIONS]
@@ -24,10 +23,11 @@ OPTIONS
 
     --tiles PATH             Path to the gridded (tiled) area of interest. 
                              GeoPackage recommended, but other formats such as GeoJSON are supported.
+                             WARNING: "tile_name" column must be included.
 
     --storage [drive|cloud]  Export destination - Google Drive or Google Cloud Space (default: drive).
                              Google Cloud Space is recommended, as Google Drive requires a folder created 
-                             beforehand; fiels cannot be easily rewritten.
+                             beforehand; files cannot be easily rewritten.
 
     --folder TEXT            Drive folder or Cloud Storage bucket (default: embed2social-storage)
 
@@ -43,12 +43,15 @@ OPTIONS
                              (default: EPSG:27700).
                              Example: EPSG:4326, EPSG:3857.
 
+    --res INTEGER            Output spatial resolution (pixel size) for exports
+                             (default: 10).
+                             WARNING: for geographic CRS provided in degrees,
+                             for projected - in meters.
+
     --scale                  Multiply output data by 32767 and round to store as Int16.
                              Useful for heavyweight datasets with Float data type
                              (has been used to scale Google Satellite Embeddings). 
                              Include this flag if scaling is needed; omit to keep float values.
-
-    --poll-interval INTEGER  Polling interval for task monitoring, in seconds (default: 30)
 
 USAGE EXAMPLES
     # Run with default settings
@@ -61,7 +64,7 @@ USAGE EXAMPLES
     python src/main.py --year 2020 --collection ESA/WorldCover/v100 --project imago --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
 
     # Test with ESA/WorldCereal/2021/MARKERS/v100 colelction
-    python src/main.py --year 2021 --collection ESA/WorldCereal/2021/MARKERS/v100 --project imago-479216 --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
+    python src/main.py --year 2021 --collection ESA/WorldCereal/2021/MARKERS/v100 --project imago --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
 
     # Help
     python src/main.py --help
@@ -93,15 +96,13 @@ def setup_logger(verbose: bool = False, log_dir: str = "logs"):
     """
 
     global logger 
-    import os
-    from datetime import datetime
 
     os.makedirs(log_dir, exist_ok=True)
     filename = f"logfile_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     logfile = os.path.join(log_dir, filename)
 
     logger = logging.getLogger("imago")
-    logger.handlers.clear()  # remove any previous handlers
+    logger.handlers.clear()
     level = logging.DEBUG if verbose else logging.INFO
     logger.setLevel(level)
     # logger.propagate = False # NOTE - try if debug is not printed
@@ -123,7 +124,7 @@ def auth_init(project: str ='imago', auth_mode: str ='gcloud', verbose: bool = F
     """Start session on GEE"""
     try:
         ee.Initialize(project=project)
-        logger.info("Project initialised without credentials")
+        logger.info("Project initialised using existing credentials")
     except ee.EEException:
         logger.info("No valid credentials, authenticating...")
         ee.Authenticate(auth_mode=auth_mode)
@@ -132,7 +133,6 @@ def auth_init(project: str ='imago', auth_mode: str ='gcloud', verbose: bool = F
 
     logger.info(ee.String('Hello from the Earth Engine servers!').getInfo())
     logger.info("=" * 80)
-
 
 def build_cell_year(
     cell: "geopandas.GeoDataFrame",
@@ -189,8 +189,9 @@ def build_cell_year(
                 first_band = info['bands'][0]
                 logger.debug(f"CRS: {first_band['crs']}")
                 logger.debug(f"Resolution: {first_band['crs_transform'][0]}")
-                # TODO - to consider 'TRACE' level for these statements instead of 'DEBUG'
+                # NOTE: - it's possible to move statements above to the 'TRACE' level instead of 'DEBUG'
                 # as calls to `img.getinfo` are costly and take time (task are not queueing up while `img.getinfo` runs)
+                # However, left in 'DEBUG' for the sake of clarity
     
     # create mask for the geometry
     roi_mask = ee.Image(1).clip(ee_geometry)
@@ -204,7 +205,6 @@ def build_cell_year(
         verbose and logger.debug(f" Mosaicking {count} images which cover this tile/region....")
         logger.debug("-" * 60)
         image = masked.mosaic() 
-        #TODO - implement annual aggregation for daily images
         # which cover the same extent (as mosaic() just returns values from one image)
     # clip to geometry
     image = image.clip(ee_geometry)
@@ -276,8 +276,8 @@ def probe_image_properties(image: ee.Image, geometry: ee.Geometry = None):
         logger.debug(f" Total pixels: ~{pixels_width * pixels_height:,}")
         
         # estimate file size
-        # 64 bands * 4 bytes per pixel (float32)
-        size_bytes = pixels_width * pixels_height * 64 * 4
+        n_bands = len(bands)
+        size_bytes = pixels_width * pixels_height * n_bands * 4
         size_mb = size_bytes / (1024**2)
         size_gb = size_bytes / (1024**3)
         logger.debug(f"Estimated uncompressed size:")
@@ -289,7 +289,6 @@ def probe_image_properties(image: ee.Image, geometry: ee.Geometry = None):
     logger.debug("=" * 80)
     return None
 
-
 def export_cloud(
     image: ee.Image,
     geometry: ee.Geometry,
@@ -297,7 +296,8 @@ def export_cloud(
     prefix: str,
     folder: str = 'EarthEngine',
     crs: str = 'EPSG:4326',
-    cog: bool = False
+    res: int = 10,
+    cog: bool  = False
 ) -> ee.batch.Task:
     """
     Builds and launches batch export tasks to Google Cloud Storage as GeoTIFF 
@@ -315,6 +315,8 @@ def export_cloud(
             (can include pseudo-folder path inside the bucket)
         crs (str): Output coordinate system reference system.
             Default is 'EPSG:4326'
+        res (int): Output spatial resolution (pixel size).
+            Default is 10.         
         cog (bool): whether to save to COG. Default is False
     Returns:
         ee.batch.Task: Earth Engine batch export task object
@@ -325,8 +327,8 @@ def export_cloud(
         bucket=folder,
         fileNamePrefix=prefix,
         region=geometry,
-        scale=10,
-        #crs=crs,
+        scale=res,
+        crs=crs,
         maxPixels=1e13,
         fileFormat='GeoTIFF',
         formatOptions={
@@ -349,6 +351,7 @@ def export_drive(
     prefix: str,
     folder: str = 'EarthEngine',
     crs: str = 'EPSG:4326',
+    res: int = 10,
     cog: bool = False
 ) -> ee.batch.Task:
     """
@@ -365,6 +368,8 @@ def export_drive(
             (can include nested folder path inside the main folder)
         crs (str): Output coordinate system reference system.
             Default is 'EPSG:4326'
+        res (int): Output spatial resolution (pixel size).
+            Default is 10.   
         cog (bool): whether to save to COG. Default is False
     Returns:
         ee.batch.Task: Earth Engine batch export task object
@@ -375,15 +380,15 @@ def export_drive(
         folder=folder,
         fileNamePrefix=prefix,
         region=geometry,
-        scale=10,
-        #crs=crs,
+        scale=res,
+        crs=crs,
         maxPixels=1e13,
         fileFormat='GeoTIFF',
         formatOptions={
             'cloudOptimized': cog
         }
     )
-    
+
     task.start()
     logger.debug(f"Export started: {description}")
     logger.debug(f"Monitor at: https://code.earthengine.google.com/tasks")
@@ -392,52 +397,10 @@ def export_drive(
     
     return task
 
-def wait_for_task(
-    task: ee.batch.Task,
-    poll_interval: int = 30
-) -> dict:
-    """
-    Block until an EE task finishes and record runtime.
-
-    Args:
-        task: ee.batch.Task returned by Export
-        poll_interval: seconds between status checks
-
-    Returns:
-        Dictionary with task metadata and timing info
-    """
-    start_time = time.time()
-    task_id = task.id
-    description = task.config.get('description', 'unknown')
-
-    logger.debug(f"Waiting for task {description} ({task_id})")
-
-    while True:
-        status = task.status()
-        state = status['state']
-
-        if state in ['COMPLETED', 'FAILED', 'CANCELLED']:
-            end_time = time.time()
-            duration = end_time - start_time
-
-            logger.info(f"Task {description} finished with state={state}")
-            logger.info(f"Duration: {duration/60:.2f} minutes")
-
-            return {
-                'task_id': task_id,
-                'description': description,
-                'state': state,
-                'start_time': start_time,
-                'end_time': end_time,
-                'duration_seconds': duration,
-                'status': status
-            }
-
-        time.sleep(poll_interval)
-
 def wait_for_all_tasks(tasks, poll_interval=60):
     """
     Wait until all Earth Engine tasks complete and record total runtime.
+    Uses batch polling via ee.data.getTaskStatus (1 API call per poll).
 
     Args:
         tasks: list of ee.batch.Task objects
@@ -448,35 +411,33 @@ def wait_for_all_tasks(tasks, poll_interval=60):
         all_statuses: list of full task metadata dicts
     """
     task_ids = [task.id for task in tasks]
-    logger.info(f"Waiting for {len(tasks)} tasks to complete...")
+    logger.info(f"Waiting for {len(task_ids)} tasks to complete...")
+
     start_time = time.time()
-    
-    all_completed = False
-    while not all_completed:
-        all_completed = True
-        for task in tasks:
-            status = task.status()
-            state = status.get('state', 'UNKNOWN')
-            if state not in ['COMPLETED', 'FAILED', 'CANCELLED']:
-                all_completed = False
-                break
-        if not all_completed:
-            time.sleep(poll_interval)
-    
-    end_time = time.time()
-    total_seconds = end_time - start_time
+
+    while True:
+        # single API calls for all tasks
+        statuses = ee.data.getTaskStatus(task_ids)
+        states = [s.get("state", "UNKNOWN") for s in statuses]
+
+        # check terminal states
+        if all(state in ("COMPLETED", "FAILED", "CANCELLED") for state in states):
+            break
+
+        time.sleep(poll_interval)
+
+    total_seconds = time.time() - start_time
     logger.info("=" * 80)
 
-    # capture full metadata
-    all_statuses = []
-    for task in tasks:
-        status = task.status()
-        for key in ['creation_timestamp_ms', 'start_timestamp_ms', 'update_timestamp_ms']:
+    # normalise timtestamps
+    for status in statuses:
+        for key in ("creation_timestamp_ms", "start_timestamp_ms", "update_timestamp_ms"):
             if key in status:
-                status[key] = datetime.fromtimestamp(status[key]/1000).strftime('%Y-%m-%d %H:%M:%S')
-        all_statuses.append(status)
+                status[key] = datetime.fromtimestamp(
+                    status[key] / 1000, tz=timezone.utc
+                ).strftime("%Y-%m-%d %H:%M:%S")
     
-    return total_seconds, all_statuses, task_ids
+    return total_seconds, statuses, task_ids
 
 def get_operations_metadata(task_ids, project, verbose=False):
     """
@@ -552,40 +513,43 @@ def get_operations_metadata(task_ids, project, verbose=False):
     help="Coordinate Reference System (CRS) of the output"
 )
 @click.option(
+    "--res",
+    default=10,
+    type=int,
+    help="Spatial resolution of output"
+)
+@click.option(
     "--scale",
     is_flag=True,
     help="Scale to Int16, multiplying by 32767. Useful for heavyweight datasets with Float data type."
-)
-@click.option(
-    "--poll-interval",
-    default=30,
-    type=int,
-    help="Polling interval (seconds) for task monitoring"
 )
 
 def main(
     collection,
     tiles,
     project,
+    auth_mode,
     storage,
     folder,
     year,
     verbose,
     cog,
     crs,
-    scale,
-    auth_mode,
-    poll_interval,
+    res,
+    scale
 ):
     """
     Batch export annual satellite imagery 
     for a grid of spatial tiles and area of 
     interest using Google Earth Engine 
-    (for example Google Satellite Embeddings).
+    (for example, Google Satellite Embeddings).
     """
 
-    global logger
+    global logger 
     setup_logger(verbose=verbose, log_dir="logs")
+    # NOTE - there are two options:
+    # global logger (implemented for the sake of clarity)
+    # define logger in the each function as a separate parameter
 
     logger.info(f"Extracting {collection} collection for {year} year...")
     logger.info("=" * 80)
@@ -595,7 +559,9 @@ def main(
 
     # Load grid
     grid = geopandas.read_file(tiles)
-
+    if "tile_name" not in grid.columns:
+        raise ValueError("Input tiles must contain a 'tile_name' column")
+    
     for _, row in grid.iterrows():
         cell = row["tile_name"]
         cell_gdf = grid.loc[[row.name]]
@@ -611,7 +577,7 @@ def main(
             verbose=verbose,
         )
 
-        # Scale embeddings to int16
+        # scale data to int16 (if dataset is Embeddings)
         if scale:
             logger.debug("Scaling image: multiply by 32767 and round (scale to Int16)")
             cell_gee_image = (
@@ -622,8 +588,7 @@ def main(
                 .toInt16()
             )
 
-
-
+        # choose between cloud and drive for export destination
         if storage == "cloud":
             logger.debug("Exporting to Google Cloud Storage...")
             task = export_cloud(
@@ -632,11 +597,12 @@ def main(
                 description=description,
                 prefix=prefix,
                 folder=folder,
-                #crs=crs,
+                crs=crs,
+                res=res,
                 cog=cog
             )
 
-        else:  # drive
+        else:
             logger.debug("Exporting to Google Drive...")
             task = export_drive(
                 image=cell_gee_image,
@@ -644,7 +610,8 @@ def main(
                 description=description,
                 prefix=prefix,
                 folder=folder,
-                #crs=crs,
+                crs=crs,
+                res=res,
                 cog=cog
             )
 
@@ -653,10 +620,9 @@ def main(
 
         tasks.append(task)
 
-    # Wait for all tasks
+    # wait for all tasks
     total_seconds, all_statuses, task_ids = wait_for_all_tasks(
-        tasks,
-        poll_interval=poll_interval,
+        tasks
     )
 
     total_hours = total_seconds / 3600
@@ -664,7 +630,7 @@ def main(
     logger.info(f"Pipeline runtime: {total_seconds:.2f} seconds")
     logger.info(f"  -> {total_hours:.2f} hours")
 
-    # Fetch operation metadata and compute total EECU
+    # fetch operation metadata and compute total EECU
     all_ops_metadata = get_operations_metadata(task_ids, project=project, verbose=verbose)
     total_eecu = 0.0
 
@@ -676,7 +642,6 @@ def main(
     logger.info(f"Total billable EECU time: {total_eecu:.2f} seconds")
     logger.info(f"  ↳ {total_eecu / 3600:.2f} hours")
     logger.info("=" * 80)
-
 
 if __name__ == "__main__":
     main()
