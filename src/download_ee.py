@@ -7,67 +7,79 @@ for the area and year of interest
 # Vitaly Kryukov <Vitaly.Kryukov@newcastle.ac.uk>
 
 Usage:
-    python src/main.py [OPTIONS]
+    python src/download_ee.py [OPTIONS]
 
 OPTIONS
-    --collection TEXT        Earth Engine image collection to extract 
-                             (default: GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL). 
-                             Available public collections can be found in the Earth Engine Data Catalog:
-                             https://developers.google.com/earth-engine/datasets
-                             WARNING: Only annual collections currently supported 
-                             (otherwise, one timestamp will be exported)
+--collection TEXT        
+        Earth Engine image collection to extract 
+        (default: GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL). 
+        Available public collections can be found in the Earth Engine Data Catalog:
+        https://developers.google.com/earth-engine/datasets
+        WARNING: Only annual collections currently supported 
+        (otherwise, one timestamp will be exported)
 
-    --project TEXT           Google Earth Engine project ID (default: imago)
+--project, -p TEXT           
+        Google Earth Engine project ID (default: imago)
 
-    --auth-mode TEXT         Earth Engine authentication mode (default: gcloud)
+--auth-mode TEXT         
+        Earth Engine authentication mode (default: gcloud)
 
-    --tiles PATH             Path to the gridded (tiled) area of interest. 
-                             GeoPackage recommended, but other formats such as GeoJSON are supported.
-                             WARNING: "tile_name" column must be included.
+--tiles PATH             
+        Path to the gridded (tiled) area of interest. 
+        GeoPackage recommended, but other formats such as GeoJSON are supported.
+        WARNING: "tile_name" column must be included.
 
-    --storage [drive|cloud]  Export destination - Google Drive or Google Cloud Space (default: drive).
-                             Google Cloud Space is recommended, as Google Drive requires a folder created 
-                             beforehand; files cannot be easily rewritten.
+--storage [drive|cloud]  
+        Export destination - Google Cloud Space or Google Drive (default: cloud).
+        Google Cloud Space is recommended, as Google Drive requires a folder created 
+        beforehand; files cannot be easily rewritten.
 
-    --folder TEXT            Drive folder or Cloud Storage bucket (default: embed2social-storage)
+--folder TEXT            
+        Drive folder or Cloud Storage bucket (default: embed2social-storage)
 
-    --year INTEGER           Year to extract embeddings for. 
-                             The extracted tiles will be saved to subfolder 
-                             with the name equal to year (default: 2024).
+--year, -y INTEGER           
+        Year to extract embeddings for. 
+        The extracted tiles will be saved to subfolder 
+        with the name equal to year (default: 2024).
 
-    --verbose                Enable verbose logging (WARNING: can produce very large logs)
+--verbose, -v                
+        Enable verbose logging (WARNING: can produce very large logs)
 
-    --cog                    Export as Cloud Optimized GeoTIFF (COG)
+--cog                    
+        Export as Cloud Optimized GeoTIFF (COG)
 
-    --crs TEXT               Output coordinate reference system (CRS) for exports
-                             (default: EPSG:27700).
-                             Example: EPSG:4326, EPSG:3857.
+--crs TEXT               
+        Output coordinate reference system (CRS) for exports
+        (default: EPSG:27700).
+        Example: EPSG:4326, EPSG:3857.
 
-    --res INTEGER            Output spatial resolution (pixel size) for exports
-                             (default: 10).
-                             WARNING: for geographic CRS provided in degrees,
-                             for projected - in meters.
+--res INTEGER            
+        Output spatial resolution (pixel size) for exports
+        (default: 10).
+        WARNING: for geographic CRS provided in degrees,
+        for projected - in meters.
 
-    --scale                  Multiply output data by 32767 and round to store as Int16.
-                             Useful for heavyweight datasets with Float data type
-                             (has been used to scale Google Satellite Embeddings). 
-                             Include this flag if scaling is needed; omit to keep float values.
+--scale                  
+        Multiply output data by 32767 and round to store as Int16.
+        Useful for heavyweight datasets with Float data type
+        (has been used to scale Google Satellite Embeddings). 
+        Include this flag if scaling is needed; omit to keep float values.
 
 USAGE EXAMPLES
     # Run with default settings
-    python src/main.py
+    python src/download_ee.py
 
     # Example of export in non-commercial project (for testing)
-    python src/main.py --year 2024 --project imago --scale --storage drive --folder cli-test --tiles data/uk_1km_grid_sample1.gpkg
+    python src/download_ee.py --year 2024 --project imago --scale --storage drive --folder cli-test --tiles data/uk_1km_grid_sample1.gpkg
 
     # Test with ESA world cover ("ESA/WorldCover/v100" collection)
-    python src/main.py --year 2020 --collection ESA/WorldCover/v100 --project imago --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
+    python src/download_ee.py --year 2020 --collection ESA/WorldCover/v100 --project imago --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
 
     # Test with ESA/WorldCereal/2021/MARKERS/v100 colelction
-    python src/main.py --year 2021 --collection ESA/WorldCereal/2021/MARKERS/v100 --project imago --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
+    python src/download_ee.py --year 2021 --collection ESA/WorldCereal/2021/MARKERS/v100 --project imago --storage drive --folder cli-test --tiles data/uk_1km_grid_sample.gpkg
 
     # Help
-    python src/main.py --help
+    python src/download_ee.py --help
 """
 
 import ee
@@ -78,47 +90,13 @@ import time
 from datetime import datetime, timezone
 import os
 
-import click # command line
+import click
 import logging
 
+# internal tools
+from utils import setup_logger, logger
+
 logger: logging.Logger # to make clear that 'logger' is global by design
-
-def setup_logger(verbose: bool = False, log_dir: str = "logs"):
-    """
-    Configure the logger to write all output to a file.
-    
-    Args:
-        verbose: If True, set logging level to DEBUG; else INFO.
-        log_dir: Directory to store log files.
-    
-    Returns:
-        Configured logger object.
-    """
-
-    global logger 
-
-    os.makedirs(log_dir, exist_ok=True)
-    filename = f"logfile_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    logfile = os.path.join(log_dir, filename)
-
-    logger = logging.getLogger("imago")
-    logger.handlers.clear()
-    level = logging.DEBUG if verbose else logging.INFO
-    logger.setLevel(level)
-    # logger.propagate = False # NOTE - try if debug is not printed
-
-    # File handler
-    file_handler = logging.FileHandler(logfile)
-    file_handler.setLevel(level)
-    formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    logger.info(f"Logging started -> {logfile}")
-    logger.info("=" * 80)
 
 def auth_init(project: str ='imago', auth_mode: str ='gcloud', verbose: bool = False):
     """Start session on GEE"""
@@ -483,13 +461,13 @@ def get_operations_metadata(task_ids, project, verbose=False):
 @click.option(
     "--storage",
     type=click.Choice(["drive", "cloud"], case_sensitive=False),
-    default="drive",
-    help="Export destination - either Google Drive or Google Cloud Storage"
+    default="cloud",
+    help="Export destination - either Google Cloud Storage or Google Drive"
 )
 @click.option(
     "--folder",
     default="embed2social-storage",
-    help="Drive folder or Cloud Storage bucket"
+    help="Cloud Storage bucket or Google Drive folder"
 )
 @click.option(
     "-y", "--year",

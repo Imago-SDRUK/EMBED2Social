@@ -4,9 +4,10 @@
 /logs/
 /illustrations/
 
-# ignore 2nd part and bash so far
+# ignore extra scripts and helpers
 src/main.sh
-src/extract_to_lsoa.py
+src/test_login.py
+src/test_match.py
 
 # trash
 .Trash-*/

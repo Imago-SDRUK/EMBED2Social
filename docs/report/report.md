@@ -48,6 +48,43 @@ Google Embedding dataset by [Source Cooperative](https://source.coop/tge-labs/ae
 - Magnitude of embedding value ranges from -1 to +1 (accordingly to input data)
 - Embedding columns have floating-point (double-precision) data types
 
+***
+
+## **GEE command-line tool**
+
+A command line tool to utilise annual satellite collections and aggregate them at polygon area level has been developed.
+
+This consists of two separate tools, but can be utilised altogether as one pipeline:
+1. Export of satellite band values in GeoTIFF format to Google Drive or Google Cloud Space, filtered by the area and timeframe of interest
+2. Extraction and aggregation of raster values to the level of polygon areas
+
+To run them in default mode, use: 
+
+`python src/download_ee.py && python src/extract_to_lsoa.py`
+
+Main requirements are:
+
+- Google Earth Engine account and created project (works for projects of any level)
+- Google Cloud account for the second tool:
+https://docs.cloud.google.com/docs/authentication/set-up-adc-local-dev-environment
+- Polygons of areas to aggregate a satellite collection to (these must have contain the name of tile these areas intersect)
+- Area of interest, which can be tiled (for example, the UK gridded by tiles of 20km x 20 km)
+- Year of interest
+
+Additional help and usage examples can be explored by: 
+1. `python src/download_ee.py --help`
+2. `python src/extract_to_lsoa_.py --help`
+
+Positional arguments are not used, as input names are long and non-obvious without a name. Therefore, the CLI tool uses `option` only.
+
+**WARNING**: second tool, `extract_to_lsoa.py` is available only for Google Cloud Space mode as Google Drive mode is not suitable for such large I/O operations and is not in the priority.
+
+The Greater London case study area interesects 11 tiles of 20km x 20 km (according to the used LSOA polygons and [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
+
+TQ06, TQ08, TQ26, TQ28, TQ46, TQ48.
+
+***
+
 ### Tiling (AlphaEarth Foundations and Source Cooperative)
 AlphaEarth Foundation Embeddings in the Source Cooperative data product are internally tiled - the boundaries of tiles can be found [here](https://source.coop/tge-labs/aef/v1/annual/aef_index.gpkg) in `aef.index` file (incl. GeoPackage).
 
@@ -85,20 +122,6 @@ Even the same requests might be processed in a very different time (see [here](h
 |         |                     |                     |                 |                |     
 | **AVERAGE** | 31,493.3931     | 8.7482              | 273,954.51      | 76.0985        |   258.705             |
 | **TOTAL**   | 251,947.145     | **69.9853**             | 2,191 636.08    | **608.7877**       |   **2.02 TiB**              |
-
-
-### GEE export command-line tool
-
-A command line tool to export the tiled datasets has been developed:
-...
-
-Positional arguments are not used, as input names are usually long and non-obvious without a name. Therefore, the CLI tool uses `option` only.
-
-### London case study
-
-The Greater London interesects 11 tiles of 20km x 20 km (according to the used LSOA polygons and [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
-
-TQ06, TQ08, TQ26, TQ28, TQ46, TQ48.
 
 ### Google Cloud useful links
 Projects: https://console.cloud.google.com/earth-engine/welcome?project=embed2social
