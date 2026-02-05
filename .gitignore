@@ -9,6 +9,9 @@ src/main.sh
 src/test_login.py
 src/test_match.py
 
+# legacy
+demo/satellite_embeddings_v1-GEE_extract.py
+
 # trash
 .Trash-*/
 

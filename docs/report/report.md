@@ -1,4 +1,4 @@
-## Embeddings in spatial analysis
+# Embeddings in spatial analysis
 This technical document aims to describe the access and implementation of the [AlphaEarth Foundations Satellite Embedding Dataset](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL) for social science. This annual dataset is available in Google Earth Engine for 2017-2024, although 2017 features data quality issues (see [here](https://source.coop/tge-labs/aef)), as of 13/01/2026. 
 
 *From the AI for Good-2026 workshop:* The issue was related to dropout of some Sentinel-1 images, but the overall impact on dataset accuracy was quite low. Now, fixed data for 2017 is available on Google Earth Engine. As a rule of thumb, **Embeddings on Google Earth Engine data is always a source of truth**, always contains the latest and updated version. 
@@ -7,8 +7,43 @@ For further details on the Embedding dataset, see [this blogpost](https://medium
 
 The provided export pipeline uses Google Earth Engine and Google Cloud Space storage configured with the profeessional paid proejct. The initial test were conducted using the non-commercial Google Earth Engine account with Google Drive.
 
+***
+
+## **GEE command-line tool**
+
+A command line tool to utilise annual satellite collections and aggregate them at polygon area level has been developed.
+
+This consists of two separate tools, but can be utilised altogether as one pipeline:
+1. Export of satellite band values in GeoTIFF format to Google Drive or Google Cloud Space, filtered by the area and timeframe of interest
+2. Extraction and aggregation of raster values to the level of polygon areas
+
+To run them in default mode, use: 
+
+`python src/download_ee.py`
+
+`python src/extract_to_lsoa.py`
+
+Main requirements are:
+
+- Google Earth Engine account and created project (works for projects of any level)
+- Polygons of areas to aggregate a satellite collection to (these must have contain the name of tile these areas intersect)
+- Area of interest, which can be tiled (for example, the UK gridded by tiles of 20km x 20 km)
+- Year of interest
+
+Additional help and usage examples can be explored by: 
+1. `python src/download_ee.py --help`
+2. `python src/extract_to_lsoa_.py --help`
+
+Positional arguments are not used, as input names are long and non-obvious without a name. Therefore, the CLI tool uses `option` only.
+
+The Greater London case study area interesects 11 tiles of 20km x 20 km (according to the used LSOA polygons and [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
+
+TQ06, TQ08, TQ26, TQ28, TQ46, TQ48.
+
+***
+
 ### Data specification
-Throughout the IMAGO workflow, data changes form twice, resulting in three data stages:
+Throughout the IMAGO workflow, data changes its form twice, resulting in three data stages:
 **1. Input data:**
 - GeoTIFF format, optionally with COG layout (cannot be parameterised)
 - 64 bands (from A00 to A63)
@@ -47,41 +82,6 @@ Google Embedding dataset by [Source Cooperative](https://source.coop/tge-labs/ae
 - Includes additional 64 columns, which represent mean Embedding values for each dimension
 - Magnitude of embedding value ranges from -1 to +1 (accordingly to input data)
 - Embedding columns have floating-point (double-precision) data types
-
-***
-
-## **GEE command-line tool**
-
-A command line tool to utilise annual satellite collections and aggregate them at polygon area level has been developed.
-
-This consists of two separate tools, but can be utilised altogether as one pipeline:
-1. Export of satellite band values in GeoTIFF format to Google Drive or Google Cloud Space, filtered by the area and timeframe of interest
-2. Extraction and aggregation of raster values to the level of polygon areas
-
-To run them in default mode, use: 
-
-`python src/download_ee.py && python src/extract_to_lsoa.py`
-
-Main requirements are:
-
-- Google Earth Engine account and created project (works for projects of any level)
-- Google Cloud account for the second tool:
-https://docs.cloud.google.com/docs/authentication/set-up-adc-local-dev-environment
-- Polygons of areas to aggregate a satellite collection to (these must have contain the name of tile these areas intersect)
-- Area of interest, which can be tiled (for example, the UK gridded by tiles of 20km x 20 km)
-- Year of interest
-
-Additional help and usage examples can be explored by: 
-1. `python src/download_ee.py --help`
-2. `python src/extract_to_lsoa_.py --help`
-
-Positional arguments are not used, as input names are long and non-obvious without a name. Therefore, the CLI tool uses `option` only.
-
-**WARNING**: second tool, `extract_to_lsoa.py` is available only for Google Cloud Space mode as Google Drive mode is not suitable for such large I/O operations and is not in the priority.
-
-The Greater London case study area interesects 11 tiles of 20km x 20 km (according to the used LSOA polygons and [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
-
-TQ06, TQ08, TQ26, TQ28, TQ46, TQ48.
 
 ***
 
