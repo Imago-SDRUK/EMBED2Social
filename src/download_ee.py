@@ -89,12 +89,11 @@ from typing import Tuple
 import time
 from datetime import datetime, timezone
 import os
+import sys
 
 import click
 import logging
-
-# internal tools
-from utils import setup_logger, logger
+import traceback
 
 logger: logging.Logger # to make clear that 'logger' is global by design
 
@@ -111,6 +110,54 @@ def auth_init(project: str ='imago', auth_mode: str ='gcloud', verbose: bool = F
 
     logger.info(ee.String('Hello from the Earth Engine servers!').getInfo())
     logger.info("=" * 80)
+
+def setup_logger(verbose: bool = False, log_dir: str = "logs"):
+    """
+    Configure the logger to write all output to a file.
+    
+    Args:
+        verbose: If True, set logging level to DEBUG; else INFO.
+        log_dir: Directory to store log files.
+    
+    Returns:
+        Configured logger object.
+    """
+
+    global logger 
+
+    os.makedirs(log_dir, exist_ok=True)
+    filename = f"logfile_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    logfile = os.path.join(log_dir, filename)
+
+    logger = logging.getLogger("imago")
+    logger.handlers.clear()
+    level = logging.DEBUG if verbose else logging.INFO
+    logger.setLevel(level)
+    # logger.propagate = False # NOTE - try if debug is not printed
+
+    # File handler
+    file_handler = logging.FileHandler(logfile)
+    file_handler.setLevel(level)
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    logger.info(f"Logging started -> {logfile}")
+    logger.info("=" * 80)
+
+    # redirect uncaught exceptions to logger
+    sys.excepthook = lambda exc_type, exc_value, exc_traceback: (
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        if issubclass(exc_type, KeyboardInterrupt)
+        else logger.error(
+            f"Uncaught exception:\n{''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))}"
+        )
+    )
+
+    return logger
 
 def build_cell_year(
     cell: "geopandas.GeoDataFrame",
@@ -525,9 +572,6 @@ def main(
 
     global logger 
     setup_logger(verbose=verbose, log_dir="logs")
-    # NOTE - there are two options:
-    # global logger (implemented for the sake of clarity)
-    # define logger in the each function as a separate parameter
 
     logger.info(f"Extracting {collection} collection for {year} year...")
     logger.info("=" * 80)
