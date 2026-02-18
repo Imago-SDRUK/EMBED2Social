@@ -33,21 +33,6 @@ def parse_args():
 def validate_config(input_cfg, output_cfg, dask_cfg):
     """Check that fields in the config files have acceptable values"""
 
-    # Output configuration
-    acceptable_output_formats = ["geotiff", "cog", "netcdf", "gtiff", "zarr"]
-    # Default to netCDF if not specified
-    if "output_format" not in output_cfg:
-        input_cfg["output_format"] = "netcdf"
-
-    if output_cfg["output_format"].lower() not in acceptable_output_formats:
-        raise ValueError(
-            f'Output format {output_cfg["output_format"]} is not acceptable, '
-            f"need one of {acceptable_output_formats}"
-        )
-    # if "geotiff" coerce to GTiff as this is the required formatting string
-    elif output_cfg["output_format"].lower() == "geotiff":
-        output_cfg["output_format"] = "GTiff"
-
     # Dask configuration
     # set client_worker_timeout to None by default (i.e. it will wait
     # until we have n/4 workers indefinitely.
