@@ -4,6 +4,7 @@
 # Embedding embeddings across social research and policy (EMBED2Social)
 
 The aim of EMBED2Social is to accelerate and widen the adoption of image embedding technology in applied contexts to facilitate unlocking the potential of satellite data for research, policy and decision-making.
+The technical documentation of the used data and developed pipeline is available [here](docs/report/report.md).
 
 ## 🛠️ Contributing
 
@@ -32,6 +33,8 @@ See the [LICENSE](LICENSE) file for full details.
 
 ## 🗂️ Repository Structure
 
+- `src/` - Main codebase, eg to extract and export Embedding data (**latest version)
+- `demo/` -  Embed2Social prototypes (notebooks and previous code versions)
 - `assets/` — Images, diagrams, and other media files
 - `.github/` — Community health files (issue/PR templates, workflows)
 - `CONTRIBUTING.md` — How to contribute to this project
