@@ -1,102 +1,120 @@
-# Embeddings in spatial analysis
-This technical document aims to describe the access and implementation of the [AlphaEarth Foundations Satellite Embedding Dataset](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL) for social science. This annual dataset is available in Google Earth Engine for 2017-2024, although 2017 features data quality issues (see [here](https://source.coop/tge-labs/aef)), as of 13/01/2026. 
+# Google Satellite Embedding per small area (2017-2024) data product
+This technical report aims to describe the access, processing and development of the Imago Embedding data product, which is based on [AlphaEarth Foundations Satellite Embedding Dataset V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL) available in Google Earth Engine for 2017-2024.
 
-*From the AI for Good-2026 workshop:* The issue was related to dropout of some Sentinel-1 images, but the overall impact on dataset accuracy was quite low. Now, fixed data for 2017 is available on Google Earth Engine. As a rule of thumb, **Embeddings on Google Earth Engine data is always a source of truth**, always contains the latest and updated version. 
+This data product provides Embedding values (64-dimensional, L2-normalised vectors, with values ranging between −1 and +1) across the original dimensions, aggregated to small-area geographies — Lower Layer Super Output Areas (LSOAs). The source data has been accessed and processed at 10-metre spatial resolution from the annual products. Aggregation was carried out using a geospatial workflow that exported the tiled embedding data to Google Cloud Storage and then aggregated them to 2021 LSOA boundaries within each LSOA.
 
-For further details on the Embedding dataset, see [this blogpost](https://medium.com/google-earth/ai-powered-pixels-introducing-googles-satellite-embedding-dataset-31744c1f4650).
+> Although 2017 featured data quality issues (see [here](https://source.coop/tge-labs/aef)), they have been addressed in the latest version of the > original Embedding data collection available on Google Earth Engine.
+> *From the AI for Good-2026 Workshop:* The issue was related to dropout of some Sentinel-1 images, but the overall impact on dataset accuracy was quite > low. As a rule of thumb, **Google Earth Engine data is always a source of truth** and always contains the latest and updated version. 
 
-The provided export pipeline uses Google Earth Engine and Google Cloud Space storage configured with the profeessional paid proejct. The initial test were conducted using the non-commercial Google Earth Engine account with Google Drive.
+For further details on the original Embedding dataset, see [this blogpost](https://medium.com/google-earth/ai-powered-pixels-introducing-googles-satellite-embedding-dataset-31744c1f4650).
 
-***
+The developed workflow involves two pipelines:
 
-## **GEE command-line tool**
+1. The export pipeline uses Google Earth Engine (GEE) and Google Cloud Storage configured with the professional paid project. Initial tests were conducted using a non-commercial GEE account with Google Drive.
 
-A command line tool to utilise annual satellite collections and aggregate them at polygon area level has been developed.
-
-This consists of two separate tools, but can be utilised altogether as one pipeline:
-1. Export of satellite band values in GeoTIFF format to Google Drive or Google Cloud Space, filtered by the area and timeframe of interest
-2. Extraction and aggregation of raster values to the level of polygon areas
-
-To run them in default mode, use: 
-
-`python src/download_ee.py`
-
-`python src/extract_to_lsoa.py`
-
-Main requirements are:
-
-- Google Earth Engine account and created project (works for projects of any level)
-- Polygons of areas to aggregate a satellite collection to (these must have contain the name of tile these areas intersect)
-- Area of interest, which can be tiled (for example, the UK gridded by tiles of 20km x 20 km)
-- Year of interest
-
-Additional help and usage examples can be explored by: 
-1. `python src/download_ee.py --help`
-2. `python src/extract_to_lsoa_.py --help`
-
-Positional arguments are not used, as input names are long and non-obvious without a name. Therefore, the CLI tool uses `option` only.
-
-The Greater London case study area interesects 11 tiles of 20km x 20 km (according to the used LSOA polygons and [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles:
-
-TQ06, TQ08, TQ26, TQ28, TQ46, TQ48.
+2. Aggregation of embeddings at the level of small geographies (Lower Layer Super Output Areas (LSOAs) for England and Wales, Data Zones for Scotland, and Small Areas for Northern Ireland).
 
 ***
 
 ### Data specification
+
 Throughout the IMAGO workflow, data changes its form twice, resulting in three data stages:
-**1. Input data:**
-- GeoTIFF format, optionally with COG layout (cannot be parameterised)
-- 64 bands (from A00 to A63)
-- LZW compression (regardless whether COG or not)
-- NoData is undefined by default (can be defined)
-- usually one extra pixel along northern and eastern tile edges (so if expected 2000 x 2000 pixels, the output will contain 2001 x 2001 pixels)
+**0. Input data:**
+- GeoTIFF format, optionally with COG layout (cannot be parameterised).
+- 64 bands (from A00 to A63).
+- Int16 data type, LZW compression.
+- CRS - local UTM zone projection; spatial resolution 10 m.
+- NoData is undefined by default (can be defined).
+- Usually features one extra pixel along northern and eastern tile edges (so if expected 2000 x 2000 pixels, the output will contain 2001 x 2001 pixels).
 
-**2. Intermediate data:**
-- GeOTIFF format
-- 64 bands (from A00 to A63)
-- Int16 data type
-- GeoTIFF format without COG
-- LZW compression
-- 10 m spatial resolution
-- Tiled by 20 x 20 km National Grid (2001 x 2001 px)
-- NoData is undefined with one extra pixel along the northern and eastern tile edges. At the same time, for further processing pixels equal to 0 should be filtered out as they distort the calculation.
-- Value magnitude ranges from -32767 to +32767 to reduce the output size in average by one third of the original size. To work with original decimal values (to 'descale') which range from -1 to +1, use the following formula:
+**1. Intermediate data:**
+- GeOTIFF format without COG layout.
+- 64 bands (from A00 to A63).
+- Int16 data type, LZW compression.
+- CRS - EPSG:27700, OSGB36/British National Grid; spatial resolution 10 m.
+- NoData is undefined with one extra pixel along the northern and eastern tile edges. In the further processing pixels equal to 0 are filtered out to avoid calculation distortions.
+- Gridded by 20 x 20 km National Grid tiles.
+- Value magnitude ranges from -32767 to +32767 to reduce the output size in average by one third of the original size. To work with original decimal values (to 'descale') which range from -1 to +1, the following formula can be used: $x_\text{original} = \frac{x_\text{int16}}{32767}$
+- The scaled `int16` dataset preserves the original `float64` values with very high precision (*Figure 1*). The mean error and RMSE are on the 6th decimal place, while the maximum absolute error occurs at the 5th decimal place (validated for SJ26 tile, 2024).
 
-$x_\text{original} = \frac{x_\text{int16}}{32767}$
+  <img src="images/accuracy_stats.png" width="30%">
 
-- The scaled int16 dataset preserves the original float64 values with very high precision. The mean error and RMSE are on the 6th decimal place, while the maximum absolute error occurs at the 5th decimal place (validated for SJ26 tile, 2024).
+  <img src="images/SJ26-2024_band1_difference_hist.png" width="60%"> <br>
+  *Figure 1: Scaling error statistics snippet (IMAGO) for maximum error, mean error and MSE (above) and difference between the nonscaled and scaled values, A00 dimension, 2024, Tile SJ26 (below)*<br>
 
-**Scaling error statistics snippet (IMAGO)** <br>
-<img src="accuracy_stats.png" width="300" height="150">
+  Google Embedding dataset by [Source Cooperative](https://source.coop/tge-labs/aef) organised in a different way. It is stored in signed 8-bit data type through nonlinear scaling, with `-128` as a nodata value and the spatial index recorded within the filenames. This also allows to considerably reduce the filesize (3.45 GB for 8192 x 8192 pixel image), but has a lower accuracy, especially regarding the maximum error (*Figure 2*).
 
-![scaled_accuracy](SJ26-2024_band1_difference_hist.png)
+  <img src="images/accuracy_stats_sourcecoop.png" width="300" height="150"> <br>
+  *Figure 2: Scaling error statistics snippet (Source Cooperative) for maximum error, mean error and MSE*
 
-Google Embedding dataset by [Source Cooperative](https://source.coop/tge-labs/aef) organised in a different way. It is stored in signed 8-bit data type through nonlinear scaling, with `-128` as a nodata value and the spatial index recorded within the filenames. This also allows to considerably reduce the filesize (3.45 GB for 8192 x 8192 pixels), but has a lower accuracy, especially regarding the maximum error.
-
-**Scaling error statistics snippet (Source Cooperative)** <br>
-<img src="accuracy_stats_sourcecoop.png" width="300" height="150">
-
-3. **Output data:**
-- GeoPackage format
-- Built on the [LSOA features](https://data.imago.ac.uk/datasets/lsoa-boundaries-for-the-united-kingdom-2021)
-- Includes additional 64 columns, which represent mean Embedding values for each dimension
-- Magnitude of embedding value ranges from -1 to +1 (accordingly to input data)
-- Embedding columns have floating-point (double-precision) data types
+2. **Output data:**
+- GeoPackage format.
+- Built on the [LSOA features](https://data.imago.ac.uk/datasets/lsoa-boundaries-for-the-united-kingdom-2021).
+- Includes additional 64 columns for each statistical parameter (mean, median, min, max, std, sum, count), which represent Embedding values for each dimension.
+- Magnitude of embedding value ranges from -1 to +1 (accordingly to input data).
+- Embedding columns have floating-point (double-precision) data types, except from count (integer).
 
 ***
 
-### Tiling (AlphaEarth Foundations and Source Cooperative)
-AlphaEarth Foundation Embeddings in the Source Cooperative data product are internally tiled - the boundaries of tiles can be found [here](https://source.coop/tge-labs/aef/v1/annual/aef_index.gpkg) in `aef.index` file (incl. GeoPackage).
+## **1. Google Earth Engine pipeline**
 
-However, when running export directly through GEE in a verbose mode, it turned out that the original Embedding tiling is different from the published tile boundaries (eg, area of interest which intersects four Embedding tile, filters only two images while the outpus consistent and covers the whole area of interest). 
+A command line tool to access annual satellite collections, filter by the area and timeframe of interest, and export in GeoTIFF format to Google Drive or Google Cloud Storage has been developed.
 
-Therefore, the UK is covered by 39 Embedding tiles in the original dataset, which generally follow the outlines of UTM zones.
+Main requirements are:
 
-### Time concepts
+- Google Earth Engine account and created project (works for projects of any level)
+- Area of interest, which can be tiled (for example, the UK gridded by tiles of 20km x 20 km)
+- Year of interest
+
+The pipeline utilises a simple processing and I/O structure by accesssing data from Google Earth Engine, checking its match with the area and timeframe of interest, and exporting imagery batches through Google Earth Engine API (*Figure 3*).
+
+![PENDING - download_ee_flowchart](images/download_ee_flowchart.png) <br>
+*Figure 3: Conceptual flowchart, illustrating the input data, input/output operations, processing steps and output data in the Google Earth Engine download pipeline*
+
+**Any annual collections** can be used as input for further export, for example, [ESA WorldCover 10m v100](https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCover_v100) or [ESA WorldCereal Active Cropland 10 m v100](https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCereal_2021_MARKERS_v100). Dataset with higher granularity will not be correctly aggregated by this tool.
+
+To test the tool and explore outputs it can be recommended to consider **the Greater London case study area**, which interesects 11 tiles of 20km x 20 km (according to the used LSOA polygons and [London Datastore](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-for-london-20od9/)). However, almost 98% of the Greater London area is covered by six tiles: TQ06, TQ08, TQ26, TQ28, TQ46, TQ48. This area has been used to demonstrate the data product in the [hands-on workshop](https://imago-sdruk.github.io/EMBED2Social-Workshop-2026/Materials.html) introducing satellite (geo-)embeddings and their practical applications, co-organised by Imago and MHCLG.
+
+### Command-line tool (CLI)
+
+To run the tool in default mode, use: 
+`python src/download_ee.py`
+
+Additional help and usage examples can be explored by: `python src/download_ee.py --help`
+
+Positional arguments are not used, as input names are long and non-obvious without a name. Therefore, the CLI tool uses `option` only.
+
+The following options are provided:
+
+| Option            | Description                                                      | Default                                |
+| ----------------- | ---------------------------------------------------------------- | -------------------------------------- |
+| `--collection`    | Earth Engine image collection to extract                         | GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL |
+| `--project`, `-p` | Google Earth Engine project ID                                   | imago                                |
+| `--auth-mode`     | Earth Engine authentication mode                                 | gcloud                               |
+| `--tiles`         | Path to the gridded area of interest (tiles)                     | data/uk_1km_grid_sample1.gpkg        |
+| `--storage`       | Export destination – either Google Cloud Storage or Google Drive | cloud                                |
+| `--folder`        | Cloud Storage bucket or Google Drive folder                      | embed2social-storage                 |
+| `--year`, `-y`    | Year to extract dataset for                                      | 2024                                 |
+| `--verbose`, `-v` | Enable verbose logging (WARNING: can produce very large logs)    | False                               |
+| `--cog`           | Export as Cloud Optimized GeoTIFF (COG)                          | False                                |
+| `--crs`           | Coordinate Reference System (CRS) of the output                  | EPSG:27700                           |
+| `--res`           | Spatial resolution of output                                     | 10                                   |
+| `--scale`         | Scale to Int16, multiplying by 32767                             | False                                |
+
+
+### Tiling 
+
+Imago intermediate dataset in GeoTIFF format is gridded by 20 x 20 km British National Grid tiles, which accounts to 858 tiles in total for the UK.
+
+Aside from original Google Satellite Embedding, there exist a Source Cooperative data product. AlphaEarth Foundation Embeddings in this product are internally tiled - the boundaries of tiles can be found [here](https://source.coop/tge-labs/aef/v1/annual/aef_index.gpkg) in `aef.index` file (incl. GeoPackage). UK is covered by 39 Embedding tiles in the original dataset, which generally follow the outlines of UTM zones.
+
+However, testing with GEE export in verbose mode revealed that the original Embedding tiling differs from the published Source Cooperative tile boundaries. For example, the area of interest which intersects four Source Cooperative tiles, overlays only two original Google Satellite Embedding images while the outputs consistent and covers the whole area of interest. 
+
+### Performance
 There exist different time concepts when talking about cloud computing.
 
 1. Python **pipeline runtime** (client wall-clock time)
-It's time on client machine betweeb two Python timestamps, so it doesn't indicate billing/quotas.
+It's time on client machine between two Python timestamps, so it doesn't indicate billing/quotas.
 2. **EECU (Earth Engine Compute Units)** 
 Computes consumption across all parallel workers (depends on CPU/memory) and shows billing/quotas.
 Includes I/O reads, arrays manipulations, but doesn't include latency/queue scheduling/client waiting/Google Drive or Cloud uploads.
@@ -108,6 +126,8 @@ Python runtime is a sum of task runtimes, client-side preparation, initializatio
 Even the same requests might be processed in a very different time (see [here](https://developers.google.com/earth-engine/guides/computation_overview#stability_and_predictability)). It has been found that EECU time for the same area of interest can vary by a factor of 2.8, while total runtime can vary by up to a factor of 8.8. However, the pipeline runtime and billable EECU time can be roughly predicted for large extracts (see below).
 
 **Pipeline runtime and data volume**
+
+By tiling, compressing, and scaling the embedding data, the total data size was reduced from an estimated ~4 TiB to approximately 2 TiB.
 
 | Year    | Pipeline runtime (s) | Pipeline runtime (h) | EECU time (s)    | EECU time (h)  | Total size (Gb) |
 |:--------|:--------------------|:--------------------|:----------------|:---------------|:----------------|
@@ -123,112 +143,39 @@ Even the same requests might be processed in a very different time (see [here](h
 | **AVERAGE** | 31,493.3931     | 8.7482              | 273,954.51      | 76.0985        |   258.705             |
 | **TOTAL**   | 251,947.145     | **69.9853**             | 2,191 636.08    | **608.7877**       |   **2.02 TiB**              |
 
-### Google Cloud useful links
-Projects: https://console.cloud.google.com/earth-engine/welcome?project=embed2social
+> #### **Batch export**
+>
+> In this pipeline, [batch export tasks](https://developers.google.com/earth-engine/apidocs/export-image-tocloudstorage) are used: `Export.image.toDrive` or `Export.image.toCloudStorage` which provide identical outputs:
+>
+> - The main parameters of these functions are the same
+> - Only two formats available: GeoTIFF and TFR (tensorflowrecords): https://towardsdatascience.com/tfrecords-explained-24b8f2133282/ - serialized JSONs to binary sequences
+> - LZW compression always applied to TIF, regardless whether it's COG or not
+> - `maxPixels` parameter is crucial - if exceeded, raises Error
+> - `shardSize` doesn't change metadata, but might contribute to higher EECU usage (for 101*101 pixel image shardsize=55 increases EECU time roughly by factor of 2). It's a sort of internal tiling, which can be used to reduce memory per worker and avoid errors (safer not means faster). Introduces overhead for small exports though.
+>
+> **Execution caveats**:
+> - The number of concurrently running tasks vary depending on the project configuration. For the non-commercial project, it's up to three-four, for the professional paid project - 20. <br>
+> - Maximum number of concurrently running tasks is not guaranteed (eg, for non-commercial projects one-task cap has been experienced).
+> - It is not possible to exactly predict computation performance, as computational capacity is volatile and depends on caching/EE algorithm changes/libraries changes, aside from different underlying data.
+> - Number of workers is determined by EE service configuration/ability to parallelise the job, and is **NOT CONFIGURABLE**.
 
-See your quota: https://docs.cloud.google.com/iam/docs/roles-permissions/servicemanagement#servicemanagement.quotaViewer
+***
 
-Check quotas: https://console.cloud.google.com/iam-admin/quotas
+## **2. LSOA aggregation**
 
-Additionally, check your pricing [here](https://cloud.google.com/earth-engine/pricing)!
+![PENDING - lsoa_extraction_flowchart](images/lsoa_extraction_flowchart.png)
+*Figure X: Conceptual flowchart, illustrating the input data, input/output operations, processing steps and output data in the LSOA aggregation pipeline*
 
-See the catalogue: https://developers.google.com/earth-engine/datasets/catalog
 
-Check all tasks: https://console.cloud.google.com/earth-engine/tasks?project=embed2social
+### Performance
 
-Your buckets (browser): https://console.cloud.google.com/storage/browser/embed2social-storage/
+...
 
-See the traffic and latency: https://console.cloud.google.com/apis/dashboard?project=embed2social (if performance is lower than expected)
 
-Google Cloud SDK to manage Google Cloud Storage: https://docs.cloud.google.com/sdk/gcloud
+***
 
-Or you can use a legacy CLI tool to manage Google Cloud storage - `gsutil`: https://docs.cloud.google.com/storage/docs/gsutil
+## **Data product validation**
 
-Benchmarking: https://github.com/google/earthengine-community/blob/master/guides/linked/Earth_Engine_benchmarking_toolkit.ipynb
-
-### GEE code features
-Code consists of:
-- client (Python objects)
-- server (`ee`. handler)
-- proxy objects - containerised Python objects transformed into `ee.computedObject`
-
-The main geospatial data objects in GEE are:
-- FeatureCollection -> Feature (watershed)
-- ImageCollection -> Image (satellite)
-- Geometry (Point/LineString/Polygon/Rectangle/MultiPoint/MultiLineString/MultiPolygon/LinearRing/BBox)
-
-Processing environments:
-- `interactive`
--- `standard endpoint` (low volume of concurrent, non-programmatic requests)
--- `high-volume endpoint` (more latency, less caching, simple, automated, small queries)
--`batch`:
-* asyncronous or offline stac
-* high-latency parallel processing
-* maximum number of batch tasks is determined by pricing or maybe adjusted (see [concurrent batch export tasks](https://cloud.google.com/earth-engine/pricing#enterprise)).
-
-### Batch export
-
-Export tasks are classified as batch processing (for example, [cloud export](https://developers.google.com/earth-engine/apidocs/export-image-tocloudstorage)).
-
-`Export.image.toDrive` or `Export.image.toCloudStorage`:
-- the main parameters of these functions are the same
-- only two formats available: GeoTIFF and TFR (tensorflowrecords): https://towardsdatascience.com/tfrecords-explained-24b8f2133282/ - serialized JSONs to binary sequences
-- LZW always applied to TIF, regardless whether it's COG or not
-- `maxPixels` parameter is important - if exceeded, raises Error
-- `shardSize` doesn't change metadata, but might contribute to higher EECU usage (for 101*101 pixel image shardsize=55 increases EECU time roughly by factor of 2).  It's a sort of internal tiling, which can be used to reduce memory per worker and avoid errors (safer not means faster). Introduces overhead for small exports though.
-
-**Notes:**
-- the number of concurrently running tasks vary depending on the project configuration. For the non-commercial project, it's up to three-four, for the professional paid project - 20. <br>
-Maximum number of concurrently running tasks is not guaaranteed (eg, for non-commercial projects one-task cap has been experienced)
-- we can't exactly predict computation performance, it's volatile and depends on caching/EE algorithm changes/libraries changes, aside from different underlying data
-- number of workers is determined by EE service configuration/ability to parallelise the job, **NOT CONFIGURABLE**.
-- in a research mode, tasks are scheduled independently for each individual, but visible across the project. In a paid mode, tasks are organised in a project-wide queue
-- it is not possible to set task priorities for users with non-commercial access
-- it's impossible to run GEE completely lasily, without hitting real data, to check the performance/tasks/operations/memory/computation graph. Possible to use `explain` on collections/images to inspect the computation graph.
-
-### GEE processing structure
-- One task = one operation
-- Operation = stage + stage + stage + ... Stages ≈ phases of the operation (map → reduce → output).
-Operation examples: "create local files", "write files to destiantion".
-- Stage = work unit + work unit + .... Work units ≈ smallest chunk of computation (tile).
-- Workers ≈ processes that handle work units
-
-In the non-commercial version tasks are scheduled quickly, one by one, but it's usually up to only three tasks concurrently `running on the backend`, while the rest is just `submitted on the backend`. This timeframe when tasks are submitted to the backend servers but do not run yet, contribute to the queue time but not to EECU time.
-
-#### Code recommendations:
-- avoid `for` loops in server code, use instead **mapping with lambda**
-- avoid `if/else`, use server-side conditional
-- use `ee.Thing` as a server object and `ee.Thing.method()` as a server function
-- create Python base, then wrap it with GEE
-
-## TODOs
-
-- [x] Avoid pasting tokens each time for a new EE request
-- [x] Read time of GEE concurrent tasks once all tasks completed
-- [x] Find out if LZW applied automatically
-- [x] Find out the approximate EECU consumption per one 20km x 20km tile per one year
-- [x] In Drive, create a folder before exporting datasets  
-  _Not needed anymore_
-- [x] In Google Drive, handle overwriting files  
-  _Not needed anymore_
-- [x] Test splitting one big tile (20km) into multiple chunks and feed them as separate tasks into GEE (currently each tile is one task)  
-  _Not needed anymore_
-- [x] Check if additional reprojecting in building a cell involves more EECU (maybe a bit, but not so relevant)
-- [x] Check if mosaicked datasets involve more EECU (no visible differences)
-- [x] Compress the dataset size:
-  - [x] Convert values to integer through a scale factor
-  - [x] Output will be in int32 or int16 (preferably unsigned)
-  - [x] Decide whether COG is required and what is the best combination for compression/format/COG
-- [x] Find out the real boundaries of Google Embeddings
-- [x] Analyse the accuracy of the Source Cooperative dataset
-- [x] Develop Colab Notebook to aggregate Embeddings at LSOA level
-  _Needs to be transformed as Colab CPUs are not suitable for massive I/O extractions_ 
-- [x] Provide performance/size stats per year of data product (2017–2024)
-- [x] Provide a command line tool for one-year uploads
-- [ ] Develop `.py` code for LSOA extraction with IMAGO pipeline
-- [ ] Align logfile names with the common conventions  
-  https://stackoverflow.com/questions/1765689/what-is-the-best-practice-for-formatting-logs  
-  _Partly done_
-
+...
 
 
