@@ -171,7 +171,7 @@ files differ only in the year of interest - the input/output paths and other rel
 
 Figure 4 below shows the LSOA extraction workflow. The pipeline (at step 1 in the flowchart) is controlled by a script `run_all_years.sh`. 
 This script generates a configuration file (`config_$YEAR.yaml`) and a separate runscript (`run_$YEAR.sh`) for each year 
-of interest (default 2017-2024). based on these templates. The configuration file contains all relevant parameters for the LSOA extraction step, 
+of interest (default 2017-2024) based on these templates. The configuration file contains all relevant parameters for the LSOA extraction step, 
 including input/output paths, and other parameters such as the number of workers to use, and the amount of memory to give to each worker.
 The runscript then runs the LSOA extraction pipeline for that year (`embed_to_lsoa.py`), using the generated configuration file as input.
 
@@ -204,6 +204,13 @@ However, since the raster data is at very high (20m) resolution, this mitigates 
 See the Validation section below for more details on the impact of this effect.
 
 ### Performance
+
+The datasets used for the LSOA aggregation step are accessed via Google Cloud Storage (GCS). Initially, these calculations were 
+done using Google Colab (for the Greater London area demo). However, due to compute limitations associated with Colab (particularly the limited number of CPUs available), 
+the LSOA aggregation step was run on a virtual machine (VM) with more resources (8 CPUs and 32 GB of memory). This number was 
+chosen as a balance between *good enough* performance and cost. We access the data from GCS via mounting the GCS bucket to the VM. 
+This does however have a performance impact, since I/O must navigate the additional overhead of accessing the data from GCS, which is not
+as fast as reading the data from local disk.
 
 The performance of the LSOA aggregation step is dependent on two main factors: the number of parallel `dask` workers used, and the 
 amount of memory given to each worker. For the initial release of the UK-wide dataset, the pipeline was run on a VM with 8 workers 
