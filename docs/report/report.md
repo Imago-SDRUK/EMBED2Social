@@ -163,13 +163,64 @@ By tiling, compressing, and scaling the embedding data, the total data size was 
 
 ## **2. LSOA aggregation**
 
-![PENDING - lsoa_extraction_flowchart](images/lsoa_extraction_flowchart.png)
-*Figure X: Conceptual flowchart, illustrating the input data, input/output operations, processing steps and output data in the LSOA aggregation pipeline*
+The LSOA aggregation pipeline takes the tiled GeoTIFF outputs from the previous step, and aggregates them to LSOA boundaries.
+The output is a GeoPackage file with one row per LSOA, and columns for each of the 64 embedding dimensions, with values representing the mean embedding value across all pixels that fall within the LSOA boundary.
 
+This LSOA extraction step can be run for all years in the dataset, using `bash` scripting and configuration file templates. These configuration
+files differ only in the year of interest - the input/output paths and other relevant parameters are amended purely using the year of interest.
+
+Figure 4 below shows the LSOA extraction workflow. The pipeline (at step 1 in the flowchart) is controlled by a script `run_all_years.sh`. 
+This script generates a configuration file (`config_$YEAR.yaml`) and a separate runscript (`run_$YEAR.sh`) for each year 
+of interest (default 2017-2024). based on these templates. The configuration file contains all relevant parameters for the LSOA extraction step, 
+including input/output paths, and other parameters such as the number of workers to use, and the amount of memory to give to each worker.
+The runscript then runs the LSOA extraction pipeline for that year (`embed_to_lsoa.py`), using the generated configuration file as input.
+
+![](images/lsoa_extraction_flowchart.png)
+*Figure 4: Conceptual flowchart, illustrating the input data, input/output operations, processing steps and output data in the LSOA aggregation pipeline*
+
+`embed_to_lsoa.py` calls routines from our `imago` toolkit repository to perform the actual LSOA calculation. In this step, 
+we create a mapping between tile IDs and filenames, and use these to load in the relevant tiles for each LSOA in the input LSOA GeoPackage file.
+We then use `dask` to parallelise over the LSOAs in chunks, and within each `dask` worker, we use `rasterio` to perform zonal statistics to calculate 
+the mean embedding value for each dimension across all pixels that fall within the LSOA boundary (although see Limitations section below).
+
+Once the mean embedding value for each pixel and band is calculated, we aggregate to calculate the mean embedding value for each dimension across the LSOA. 
+This averaging is calculated *per-tile*, and the sum of the pixels that overlap that tile is saved. Then, the final LSOA-weighted average is the weighted average of 
+the per-tile averages, weighted by the number of pixels that overlap with the LSOA in each tile. This is necessary since some LSOAs will overlap with multiple tiles, 
+and we want to ensure that the final average is representative of the entire LSOA, rather than being biased towards the tile with the most pixels overlapping.
+
+Finally, we write out the results to a file (default `GeoPackage` format, but optionally `parquet`), and re-run for the next year of interest. 
+
+Since we just rely on an input GeoPackage file, it is possible to perform this exact same aggregation for other geographies (e.g. MSOA), provided
+that these files contain an appropriate tile <-> polygon mapping. 
+
+
+#### Limitations
+
+The current pipeline uses `rasterio` for the zonal statistics calculation. This is faster than using libraries such as `exactextract`, but this has tradeoffs.
+The pipeline treats all pixels that overlap with the LSOA as contributing the same amount to the pixel-weighted average. Thus, there is a small bias,
+particularly for small LSOAs (i.e. those with high population density), since the proportion of pixels with partial overlap to pixels with full overlap is higher. 
+However, since the raster data is at very high (20m) resolution, this mitigates the impact of this bias significantly. 
+
+See the Validation section below for more details on the impact of this effect.
 
 ### Performance
 
-...
+The performance of the LSOA aggregation step is dependent on two main factors: the number of parallel `dask` workers used, and the 
+amount of memory given to each worker. For the initial release of the UK-wide dataset, the pipeline was run on a VM with 8 workers 
+(CPUs) and 4 GB of memory per worker. In order to fit each dataset into memory, we use chunking to split the calculation into 
+groups of bands (e.g. 8 bands per chunk, so 8 chunks in total for the 64 bands). This allows us to run the processing
+without spilling to disk, which heavily impacts performance.
+
+Additionally, since we have lots of repeated I/O on tile metadata
+(using `rasterio.open`), we use Python's `functools.lru_cache` to cache this data and avoid repeated reads; this improves overall
+performance by a factor of ~25%. 
+
+On average, for each year, the LSOA aggregation step takes around 1.5 hours to run to completion. It is therefore possible 
+to run the entire LSOA extraction pipeline from 2017-2024 in a single day. 
+
+Performance can be improved by increasing the number of workers; however this is limited by the amount of memory available 
+on the machine. Possible performance enhancements include using a true windowed read to minimise memory pressure. This would
+allow for more workers to be used, and also ease the need for band-by-band chunking, which will improve performance somewhat.
 
 
 ***
