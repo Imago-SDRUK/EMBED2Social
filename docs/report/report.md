@@ -1,7 +1,7 @@
 # Google Satellite Embedding per small area (2017-2024) data product
 This technical report aims to describe the access, processing and development of the Imago Embedding data product, which is based on [AlphaEarth Foundations Satellite Embedding Dataset V1](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL) available in Google Earth Engine for 2017-2024.
 
-This data product provides Embedding values (64-dimensional, L2-normalised vectors, with values ranging between −1 and +1) across the original dimensions, aggregated to small-area geographies — Lower Layer Super Output Areas (LSOAs). The source data has been accessed and processed at 10-metre spatial resolution from the annual products. Aggregation was carried out using a geospatial workflow that exported the tiled embedding data to Google Cloud Storage and then aggregated them to 2021 LSOA boundaries within each LSOA.
+This data product provides Embedding values (64-dimensional, L2-normalised vectors, with values ranging between −1 and +1) at 10 meter spatial resolution, aggregated to small-area geographies — Lower Layer Super Output Areas (LSOAs).
 
 > Although 2017 featured data quality issues (see [here](https://source.coop/tge-labs/aef)), they have been addressed in the latest version of the > original Embedding data collection available on Google Earth Engine.
 > *From the AI for Good-2026 Workshop:* The issue was related to dropout of some Sentinel-1 images, but the overall impact on dataset accuracy was quite > low. As a rule of thumb, **Google Earth Engine data is always a source of truth** and always contains the latest and updated version. 
@@ -10,10 +10,9 @@ For further details on the original Embedding dataset, see [this blogpost](https
 
 The developed workflow involves two pipelines:
 
-1. The export pipeline uses Google Earth Engine (GEE) and Google Cloud Storage configured with the professional paid project. Initial tests were conducted using a non-commercial GEE account with Google Drive.
+1. The export pipeline uses Google Earth Engine (GEE) to export the 20x20 KM tiles.
 
-2. Aggregation of embeddings at the level of small geographies (Lower Layer Super Output Areas (LSOAs) for England and Wales, Data Zones for Scotland, and Small Areas for Northern Ireland).
-
+2. Aggregation of embeddings at the level of small geographies (LSOA).
 ***
 
 ### Data specification
@@ -28,7 +27,7 @@ Throughout the IMAGO workflow, data changes its form twice, resulting in three d
 - Usually features one extra pixel along northern and eastern tile edges (so if expected 2000 x 2000 pixels, the output will contain 2001 x 2001 pixels).
 
 **1. Intermediate data:**
-- GeOTIFF format without COG layout.
+- GeoTIFF format without COG layout.
 - 64 bands (from A00 to A63).
 - Int16 data type, LZW compression.
 - CRS - EPSG:27700, OSGB36/British National Grid; spatial resolution 10 m.
