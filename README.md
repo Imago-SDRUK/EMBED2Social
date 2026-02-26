@@ -60,6 +60,14 @@ Thank you for helping us build open, collaborative, and impactful projects with 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/batoolMM"><img src="https://github.com/batoolMM.png?s=100" width="100px;" alt="Batool"/><br /><sub><b>Batool</b></sub></a><br /><a href="https://github.com/Imago-SDRUK/EMBED2Social/commits?author=batoolMM" title="Code">💻</a> <a href="https://github.com/Imago-SDRUK/EMBED2Social/commits?author=batoolMM" title="Documentation">📖</a> <a href="#maintenance-batoolMM" title="Maintenance">🚧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://behzad-valipour.netlify.app"><img src="https://avatars.githubusercontent.com/u/47195556?v=4?s=100" width="100px;" alt="Behzad Valipour Sh."/><br /><sub><b>Behzad Valipour Sh.</b></sub></a><br /><a href="https://github.com/Imago-SDRUK/EMBED2Social/commits?author=behzad89" title="Documentation">📖</a></td>
+    </tr>
+  </tbody>
+</table>
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
