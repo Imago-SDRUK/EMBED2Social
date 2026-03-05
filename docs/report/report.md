@@ -67,7 +67,7 @@ Main requirements are:
 
 The pipeline utilises a simple processing and I/O structure by accesssing data from Google Earth Engine, checking its match with the area and timeframe of interest, and exporting imagery batches through Google Earth Engine API (*Figure 3*).
 
-![PENDING - download_ee_flowchart](images/download_ee_flowchart.png) <br>
+![download_ee_flowchart](images/download_ee_flowchart.png) <br>
 *Figure 3: Conceptual flowchart, illustrating the input data, input/output operations, processing steps and output data in the Google Earth Engine download pipeline*
 
 **Any annual collections** can be used as input for further export, for example, [ESA WorldCover 10m v100](https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCover_v100) or [ESA WorldCereal Active Cropland 10 m v100](https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCereal_2021_MARKERS_v100). Dataset with higher granularity will not be correctly aggregated by this tool.
