@@ -545,13 +545,13 @@ D.
 
 ### 5.1 Validation Framework
 
-Validation of the **small-area statistical geography** embedding
+Validation of the small-area statistical geography embedding
 datasets was conducted through two primary checks:
 
 1.  **Range validation** — verifying that all embedding values fall
     within the theoretical [−1, 1] bounds.
 2.  **Random sampling validation** — comparing pipeline-generated mean
-    **embedding** values against values extracted directly from Google
+    embedding values against values extracted directly from Google
     Earth Engine for a random sample of geographic unit-year pairs.
 
 Together, these validation procedures assess both compliance with the
@@ -570,7 +570,7 @@ The AlphaEarth embedding model produces values theoretically bounded
 within [−1, 1]. This check systematically inspected every numeric value
 across all 64 embedding dimensions for each year from 2017 to 2024.
 
--   Total values inspected per year: 46,844 **geographic units** × 64
+-   Total values inspected per year: 46,844 geographic units × 64
     dimensions = 2,998,016 values
 -   Total values inspected across 8 years: \~24 million values
 
@@ -585,28 +585,28 @@ across all 64 embedding dimensions for each year from 2017 to 2024.
 | 2023 | 46,844 | 64         | 2,998,016    | 0            | ✅     |
 | 2024 | 46,844 | 64         | 2,998,016    | 0            | ✅     |
 
-**No out-of-range values were detected in any year or embedding
+No out-of-range values were detected in any year or embedding
 dimension. Consequently, 100% compliance with the theoretical [−1, 1]
 constraint was achieved across all 23,984,128 inspected values. These
 results confirm that the aggregation, scaling, and export procedures
 preserve the theoretical properties of the original AlphaEarth
 embeddings and do not introduce numerical artefacts that violate the
-expected value range.**
+expected value range.
 
 ### 5.3 Random Sampling
 
-A random sample of 100 (LSOA, year) pairs was drawn from **400 available
-pairs (50 LSOAs across eight years)**. For each sampled pair, the
+A random sample of 100 (LSOA, year) pairs was drawn from 400 available
+pairs (50 LSOAs across eight years). For each sampled pair, the
 pipeline-generated mean embedding vector was compared against the mean
 embedding vector computed by direct extraction from Google Earth Engine
-(GEE). **The validation sample was designed to provide coverage across
+(GEE). The validation sample was designed to provide coverage across
 the full 2017–2024 period while maintaining computational feasibility
 for direct GEE extraction. Validation metrics included mean difference,
 Pearson correlation, and the standard deviation of differences.
 Conservative quality-assurance thresholds of ±0.1 for mean differences
 and (r \> 0.5) for correlations were adopted. As demonstrated in the
 following subsections, the observed results substantially exceed these
-minimum requirements.**
+minimum requirements.
 
 ### 5.3.1 Statistical Consistency and Correlation Assessment
 
@@ -626,10 +626,10 @@ minimum requirements.**
 | Mean values within tolerance | ±0.1      | 100.0%    |
 | Correlation above threshold  | r \> 0.5  | 100.0%    |
 
-**Agreement between the pipeline-generated values and direct Google
+Agreement between the pipeline-generated values and direct Google
 Earth Engine extraction was extremely high. Mean differences were
 negligible, correlations consistently approached unity, and all sampled
-observations exceeded the predefined validation criteria.**
+observations exceeded the predefined validation criteria.
 
 ### 5.3.2 Systematic Bias Testing
 
@@ -639,10 +639,10 @@ observations exceeded the predefined validation criteria.**
 | p-value     | 0.4803  | ✅ PASS                     |
 | Conclusion  |         | No systematic bias detected |
 
-**The mean difference between pipeline-derived values and direct Google
+The mean difference between pipeline-derived values and direct Google
 Earth Engine extraction was not significantly different from zero ((t =
 -0.7085), (p = 0.4803)), providing no evidence of systematic bias within
-the aggregation workflow.**
+the aggregation workflow.
 
 ### 5.3.3 Temporal Consistency
 
@@ -661,18 +661,18 @@ temporal drift:
 | 2023 | 15    | −0.000018       | 0.000821      |
 | 2024 | 13    | −0.000062       | 0.000605      |
 
-**Mean annual differences ranged from −0.000426 to 0.000120, while
-annual standard deviations ranged from 0.000538 to 0.000887.** Mean
+Mean annual differences ranged from −0.000426 to 0.000120, while
+annual standard deviations ranged from 0.000538 to 0.000887. Mean
 differences remain tightly centred around zero across all years, with
 consistently negligible variation and no evidence of temporal drift.
 
 ### 5.4 Visual Validation
 
-**Figure 5 provides visual confirmation of the statistical validation
+Figure 5 provides visual confirmation of the statistical validation
 results presented in Sections 5.2 and 5.3. Together, the visualisations
 demonstrate strong agreement between pipeline-generated values and
 direct Google Earth Engine extraction, with no evidence of systematic
-bias or temporal degradation.**
+bias or temporal degradation.
 
 ![validation_gee](images/validation_gee.png)
 
@@ -708,10 +708,10 @@ confirming no single year exhibits systematic bias.
 | Systematic bias                 | None detected           |
 | Year-to-year consistency        | Stable across all years |
 
-**Collectively, the validation results demonstrate that the aggregation
+Collectively, the validation results demonstrate that the aggregation
 workflow reproduces Google Earth Engine outputs with high fidelity,
 preserves the theoretical properties of the AlphaEarth embeddings, and
-maintains stable performance across the full 2017–2024 period.**
+maintains stable performance across the full 2017–2024 period.
 
 ## 6. Performance Evaluation
 
