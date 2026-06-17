@@ -65,7 +65,7 @@ satellite imagery. Areas with similar environmental and physical
 characteristics therefore tend to exhibit similar embedding
 representations, even when individual dimensions may not have direct
 physical interpretations. However, direct use of pixel-level embedding
-data at national scale is computationally **demanding** for most
+data at national scale is computationally demanding for most
 research and policy applications. This data product aims to aggregate
 these embeddings to small-area statistical geographies across the
 United Kingdom, including Lower Layer Super Output Areas (England and
@@ -88,15 +88,15 @@ there is currently no publicly available data product which
 aggregates AlphaEarth satellite embeddings to UK small-area
 statistical geographies across the full 2017–2024 temporal range.
 
-**Because AlphaEarth embeddings are continuous latent representations
+Because AlphaEarth embeddings are continuous latent representations
 normalised to a common feature space, arithmetic averaging provides a
 practical method for summarising neighbourhood-scale characteristics
 while preserving broad similarity relationships between areas. This
 enables embeddings to be analysed using conventional statistical and
 machine learning approaches while substantially reducing computational
-requirements compared with pixel-level datasets,** **thereby making the
+requirements compared with pixel-level datasets, thereby making the
 information more accessible for research, planning, and policy
-applications**.
+applications.
 
 ### 1.3 Objectives
 
@@ -233,8 +233,6 @@ Main requirements are:
     tiles of 20 × 20 km)
 -   Year of interest
 
-*[COMMENT_RON: Is a polygon file being used to extract the AOI?]*
-*[COMMENT_VIT: Yes. Added a note]*
 
 The pipeline accesses the AlphaEarth embedding collection on Google
 Earth Engine, filters the data according to the specified area and year
@@ -267,15 +265,6 @@ across 39 larger tiles within GEE. During the data preparation stage,
 these tiles are reprojected and regridded into the standaised BNG tile
 structure used throughout the remainder of the workflow.
 
-~~Source Cooperative, provides different [tiling
-structure](https://source.coop/tge-labs/aef/v1/annual/aef_index.gpkg).
-However, as noted in Section 2.1, the original GEE Embedding tiling
-differs from the Source Cooperative tile boundaries, so GEE export is
-always used as the authoritative source.~~
-
-*[COMMENT_RON: Not sure this part is needed at all]*
-
-*[COMMENT_VIT: Yes, dropped this]*
 
 #### 3.3.2 Embedding Transformation and Scaling
 
@@ -304,18 +293,6 @@ statistics are provided in Appendix E.
 Figure 3: Distribution of scaling errors between the original
 floating-point embedding values and the corresponding Int16-scaled
 representation for embedding dimension A00, Tile SJ26 (2024).
-
-*[COMMENT_RON: In the figure replace 1e\^-5 with 10\^-5;*
-
-*Remove 'band 1' from the top]*
-
-*By contrast, the Source Cooperative distribution uses signed 8-bit
-encoding, which allows a smaller file size but introduces higher maximum
-errors (see Appendix E).*
-
-*[COMMENT_RON: Don't think we need this for Source Cooporative]*
-
-*[COMMENT_VIT: Figure updated; agree on Source Coop]*
 
 #### 3.3.3 Intermediate Data Specifications
 
@@ -434,8 +411,6 @@ distinct time concepts are relevant:
     all parallel workers; reflects billing and quotas. Includes I/O
     reads and array manipulations, but excludes latency, queue
     scheduling, client waiting, and Google Drive/Cloud upload time.
-3.  ~~**Task runtime** — includes queue wait time, server execution time,
-    and write I/O. Does not include client-side time before scheduling.~~
 
 Python pipeline runtime is the sum of individual task runtimes plus
 client-side preparation, initialisation, and scheduling time. Even
@@ -443,17 +418,8 @@ identical requests can be processed in very different times (see [GEE
 Computation
 Overview](https://developers.google.com/earth-engine/guides/computation_overview#stability_and_predictability)).
 EECU time for the same area of interest has been observed to vary by a
-factor of 2.8, while total runtime can vary by up to a factor of 8.8.
+factor of 2.8, while total runtime can vary by up to a factor of 8.8. For detailed benchmarking tables, please see the Appendix B.
 
-*[COMMENT_RON: From what I gather from the above, this is all related to
-GEE since no values for the above metrics are reported. Maybe we should
-then just say that the export pipeline is all developed on GEE and
-performance can be assessed using the following metrics. Please see XYZ
-for more details? Unless we report a value we should be careful in
-saying to much about it. Thoughts???]*
-
-*[COMMENT_VIT: Pipeline runtime and EECU time are reported in Appendix B, so I think it's fine to keep these definitions. We can omit '3.task runtime' as it's not reported
-and not very relevant]*
 
 **3.5.2 LSOA Aggregation Pipeline**
 
