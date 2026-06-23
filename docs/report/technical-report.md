@@ -381,10 +381,11 @@ This approach ensures that each tile contributes to the final embedding
 vector in proportion to its spatial contribution to the geographic unit
 being observed. This approach is necessary because some LSOAs,
 particularly in areas near tile boundaries, may cover two or more 20 ×
-20 km tiles.
+20 km tiles. 
 
 The current implementation uses `rasterio` for zonal statistics, which
-is faster than libraries such as `exactextract` but treats all
+benefits from a parallelised implementation that offered practical
+performance advantages at the time of writing. `rasterio` treats all
 overlapping pixels as contributing equally and does not apply fractional
 weighting to partially intersected boundary pixels. While this may
 introduce minor uncertainty along geographic boundaries, the effect is
