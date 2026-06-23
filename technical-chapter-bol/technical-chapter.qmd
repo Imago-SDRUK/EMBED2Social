@@ -37,7 +37,7 @@ This section demonstrates how to import the required libraries, load the embeddi
 
 The examples presented throughout this chapter use a range of Python libraries to support data handling, spatial analysis, visualisation, and the analyses presented in this chapter. These libraries provide the core functionality needed to load the embedding dataset, manipulate spatial data, identify spatial patterns, and perform predictive analyses. In addition to widely used Python packages, a small collection of custom helper functions\* is used to simplify common analytical tasks, allowing the focus to remain on the analytical workflow rather than implementation details. The following code imports the libraries and helper functions used in the examples presented throughout this chapter.
 
-\***Further details of the custom helper functions are provided in the accompanying `functions.py` file.***
+Further details of the custom helper functions are provided in the accompanying `functions.py` file.
 
 ```{python}
 
@@ -101,15 +101,15 @@ gdf = filter_table(gdf)
 gdf.head()
 ```
 
-## 5. Use case 1: Identifying Similar Places
+## 4. Use case 1: Identifying Similar Places
 
-### 5.1. Why Semantic Similarity Matters
+### 4.1. Why Semantic Similarity Matters
 
 Traditional spatial analysis often relies on geographic proximity. However, places that are geographically distant can share similar physical characteristics, while neighbouring areas can appear very different. In this context, semantic similarity refers to how alike two places are based on the information captured by the satellite image embeddings, rather than how close they are geographically. The embedding data product allows us to move beyond geographic distance and instead measure similarity in terms of the visual and environmental characteristics captured from satellite imagery.
 
 Embeddings can be viewed as locations within a semantic space, where places with similar visual and environmental characteristics are positioned close together, while more dissimilar places are further apart. This allows researchers to identify areas that "look alike" even when they are located in different parts of a city or country.
 
-### 5.2. Extracting Embedding Representations
+### 4.2. Extracting Embedding Representations
 
 For the semantic similarity analysis, we only require the embedding variables. We therefore extract the 64 embedding dimensions from the full dataset for subsequent analysis. The geometry information is retained separately and is used later to visualise the results on a map.
 
@@ -125,7 +125,7 @@ To confirm that the embedding matrix has been created successfully, we display i
 embeddings.shape
 ```
 
-### 5.3. Finding Similar Places
+### 4.3. Finding Similar Places
 
 To identify similar places, we use a nearest-neighbours algorithm. Rather than comparing every area with every other area, this algorithm searches the embedding space and identifies the locations with the most similar embedding values. These correspond to the most visually similar neighbourhoods for every LSOA based on embedding distance.
 
@@ -149,7 +149,7 @@ The model searches for LSOAs with the most similar embedding values. The output 
 -   dist – stores that distances between each LSOA and its nearest neighbours.
 -   neigh – the positions (indices) of the corresponding LSOA within the dataset. These are converted to LSOA codes in the next step to make the results easier to interpret.
 
-### 5.4. Creating a Semantic Neighbour Table
+### 4.4. Creating a Semantic Neighbour Table
 
 The nearest-neighbour algorithm returns the positions of similar areas within the dataset rather than their actual LSOA codes. To make the results easier to interpret, we convert these positional indices back into the corresponding geographic identifiers.
 
@@ -173,7 +173,7 @@ neigh_codes.loc["E01035718"]
 
 The output is a list of LSOA codes corresponding to areas whose satellite imagery exhibits similar visual characteristics. These similarities may reflect common patterns in urban form, green-space structure, building density, road networks, or other environmental features captured by the embeddings.
 
-### 5.5. Visualising Semantic Neighbours
+### 4.5. Visualising Semantic Neighbours
 
 Having identified the nearest semantic neighbours, we can now examine whether these areas genuinely appear similar in satellite imagery. By visualising the reference neighbourhood alongside one of its nearest neighbours, we can assess how effectively the embedding representation captures meaningful characteristics of place.
 
@@ -222,9 +222,9 @@ display(HTML(
 ))
 ```
 
-## 6. Use Case 2: Predicting Socioeconomic Outcomes
+## 5. Use Case 2: Predicting Socioeconomic Outcomes
 
-### 6.1. From Exploration to Prediction
+### 5.1. From Exploration to Prediction
 
 The previous example demonstrated how satellite image embeddings can be used to explore geographic space and identify places with similar visual characteristics. In this section, we explore a different application: predictive modelling. Predictive modelling uses existing observations to learn relationships between variables and then applies those relationships to estimate outcomes for new locations.
 
@@ -239,15 +239,15 @@ This case demonstrates:
 -   Whether embeddings improve predictive performance.
 -   How predictive results can be interpreted spatially.
 
-### 6.2. Data Used for Prediction
+### 5.2. Data Used for Prediction
 
 Two datasets are used in this analysis.
 
-### Embedding Dataset
+#### Embedding Dataset
 
 The first dataset is the embedding dataset, which was introduced earlier in this chapter. It provides a set of 64 embedding variables for each LSOA, representing the visual characteristics of the surrounding environment derived from satellite imagery.
 
-### Socioeconomic Dataset
+#### Socioeconomic Dataset
 
 The second dataset contains socioeconomic variables linked to each LSOA. These variables are commonly associated with socioeconomic deprivation and are used alongside the embeddings to develop the predictive models.
 
@@ -263,7 +263,7 @@ This dataset includes:
 
 The Index of Multiple Deprivation (IMD) decile is used as the prediction target. IMD deciles group areas into ten categories, where lower deciles indicate higher levels of deprivation and higher deciles indicate lower levels of deprivation. More information on this dataset can be found [here.](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2025/english-indices-of-deprivation-2025-statistical-release "English indices of deprivation 2025: statistical release")
 
-### 6.3. Loading and Preparing the Data
+### 5.3. Loading and Preparing the Data
 
 Here, we load the socioeconomic dataset, which is provided as a CSV file. It contains the IMD deciles together with additional socioeconomic variables commonly associated with deprivation.
 
@@ -279,7 +279,7 @@ The first few records are displayed to inspect the structure of the dataset and 
 df.head()
 ```
 
-### 6.4. Combine Socioeconomic and Embedding Data
+### 5.4. Combine Socioeconomic and Embedding Data
 
 To develop the predictive model, the socioeconomic data is linked to the embedding dataset using the common LSOA identifier *LSOA21CD*. This combines the embedding variables and socioeconomic variables for each area into a single dataset.
 
@@ -300,7 +300,7 @@ gdf2.head()
 
 The resulting dataset forms the basis of the predictive modelling analysis, combining the embedding variables, socioeconomic variables, deprivation target variable, and spatial geometry within a single data structure.
 
-### 6.5. Explore the Spatial Distribution of Deprivation
+### 5.5. Explore the Spatial Distribution of Deprivation
 
 Before building a predictive model, it is useful to visualise the variable we wish to predict. Mapping the IMD deciles helps reveal how deprivation varies across London and provides a useful spatial context for interpreting the modelling results. Patterns that may be difficult to identify in a table often become much clearer when displayed on a map.
 
@@ -351,7 +351,7 @@ m
 
 The map provides an interactive overview of deprivation across London. Users can zoom to different areas, inspect individual LSOAs, and explore the spatial distribution of IMD deciles through the interactive map and tooltips. This provides an important spatial context before evaluating the predictive models developed in the following sections.
 
-### 6.6. Building a Baseline Model to Predict IMD Using Only Socioeconomic Variables
+### 5.6. Building a Baseline Model to Predict IMD Using Only Socioeconomic Variables
 
 The first model uses only socioeconomic variables. This provides a baseline against which embedding variables can later be assessed. The model includes, educational attainment, health status, population density, and household structure.
 
@@ -364,14 +364,14 @@ results_socio = run_rf_classifier(
     y_col="IMD_decile",
     x_cols=[
         "Percent no qualifications 16 and over",
-        "Percent bad and very band health",
+        "Percent bad and very bad health",
         "Population density per km",
         "Percent lone family household",
     ],
 )
 ```
 
-### 6.7. Predicting IMD Using Embedding Variables Only
+### 5.7. Predicting IMD Using Embedding Variables Only
 
 This model investigates whether the embedding variables alone capture useful information for predicting socioeconomic deprivation. Only the embedding variables derived from satellite imagery are used as predictors, no socioeconomic variables are included. This allows us to evaluate the predictive value of the embedding representation using satellite imagery alone.
 
@@ -391,7 +391,7 @@ results = run_rf_classifier(
 )
 ```
 
-### 6.8. Predicting IMD Using Combined Information
+### 5.8. Predicting IMD Using Combined Information
 
 Embeddings are not intended to replace conventional socioeconomic datasets. Instead, they are designed to complement existing sources of information by capturing characteristics of places that may not be fully represented by traditional variables.
 
@@ -405,7 +405,7 @@ feature_cols = (
     [f"A{i:02d}_mean" for i in range(64)] +
     [
         "Percent no qualifications 16 and over",
-        "Percent bad and very band health",
+        "Percent bad and very bad health",
         "Population density per km",
         "Percent lone family household",
     ]
@@ -423,7 +423,7 @@ results = run_rf_classifier(
 )
 ```
 
-### 6.9. Comparing Model Performance
+### 5.9. Comparing Model Performance
 
 Three models have now been created:
 
@@ -437,7 +437,7 @@ Their predictive results are shown below.
 
 | Model              | Accuracy | Mean Absolute Error |
 |--------------------|----------|---------------------|
-| Socioeconomic only | 0.276    | 1.42                |
+| Socioeconomic only | 0.273    | 1.41                |
 | Embeddings only    | 0.197    | 1.94                |
 | Combined model     | 0.338    | 1.11                |
 
@@ -453,7 +453,7 @@ Several important findings emerge:
 
 Together, these findings demonstrate that the embedding data product provides complementary information that is not fully captured by conventional socioeconomic datasets. Rather than replacing existing data sources, the embeddings enhance predictive performance when used alongside them.
 
-### 6.10. Understanding Which Variables Matter
+### 5.10. Understanding Which Variables Matter
 
 In addition to making predictions, Random Forest models provide information about the relative importance of each predictor. Examining feature importance helps identify which variables contribute most strongly to predicting deprivation and provides insight into how the model reaches its predictions.
 
@@ -469,7 +469,7 @@ plot_feature_importance(
 
 The resulting figure shows that both socioeconomic variables and embedding variables contribute to predictive performance. The presence of embedding variables among the most important predictors indicates that the embedding representation captures information relevant to socioeconomic deprivation.
 
-### 6.11. Visual Analytics and Spatial Interpretation - side by side
+### 5.11. Visual Analytics and Spatial Interpretation - side by side
 
 Visualising deprivation alongside predictor variables provides additional insight into the spatial patterns captured by the model and helps interpret the relationships between variables.
 
@@ -532,7 +532,7 @@ show_two_maps_side_by_side(
 
 Together, these visualisations complement the predictive modelling results by showing how deprivation and its associated variables are distributed geographically. They provide an additional layer of interpretation that cannot be obtained from model performance statistics alone.
 
-### 6.12 Key Takeaways
+### 5.12 Key Takeaways
 
 This predictive modelling example demonstrates how a single embedding data product can support predictive modelling without requiring additional image processing or feature engineering.
 
@@ -552,11 +552,11 @@ The analysis shows that:
 
 Overall, the examples in this chapter demonstrate the central value of the embedding data product: a reusable representation of place that supports multiple analytical tasks, from exploratory analysis to predictive modelling, using the same underlying embedding dataset.
 
-## 7. Opportunities and Limitations
+## 6. Opportunities and Limitations
 
 The examples presented in this chapter illustrate how the embedding data product can support both exploratory and predictive forms of spatial analysis. By transforming imagery into compact numerical representations, embeddings provide a flexible way to describe places that can be integrated into standard analytical workflows.
 
-### 7.1. Opportunities
+### 6.1. Opportunities
 
 One of the most important advantages of the embedding data product is its reusability. Traditional remote sensing approaches often require researchers to design task-specific variables, such as vegetation indices, land-cover maps, or manually derived image features. In contrast, a single embedding representation can support many different applications without requiring new feature extraction for each task.
 
@@ -572,7 +572,7 @@ Embeddings also provide opportunities for:
 
 Because embeddings can be generated consistently across extensive geographic areas, they offer a scalable framework for analysing spatial patterns in a way that is difficult to achieve using traditional manually derived indicators. This combination of reusability, scalability, and flexibility makes the embedding data product well suited to a wide range of research and policy applications.
 
-### 7.2. Limitations
+### 6.2. Limitations
 
 Despite their potential, the embedding data product should not be viewed as a complete replacement for conventional spatial and socioeconomic data. A key limitation is interpretability. Individual embedding variables do not correspond directly to observable physical characteristics such as vegetation cover, building density, or road length. Instead, information is distributed across many variables, making it difficult to assign a simple meaning to any single variable.
 
@@ -584,7 +584,7 @@ Finally, the usefulness of embeddings depends on the analytical question being a
 
 For these reasons, embeddings are best viewed as complementary sources of information that can enrich existing analytical approaches rather than replace them. Their greatest strength lies in providing a reusable representation of place that can support a wide range of analytical tasks using the same underlying satellite imagery.
 
-## 8. Conclusions
+## 7. Conclusions
 
 This chapter has demonstrated how the embedding data product can be used as a general-purpose representation of geographic space. Unlike traditional remote sensing products that are often designed for a single application, embeddings provide a flexible description of place that can be reused across multiple analytical tasks. Using the embedding data product, we illustrated this principle through two complementary examples.
 
